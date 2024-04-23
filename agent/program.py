@@ -118,4 +118,15 @@ def heuristic(board: dict[Coord, PlayerColor],
               move: PlaceAction,
               player: PlayerColor) -> float:
     # todo - flesh this code out
+    # new_board = make_place(board.copy(), move, player)
+
+    # match player:
+    #     case PlayerColor.RED:
+    #         opposite = PlayerColor.BLUE
+    #     case PlayerColor.BLUE:
+    #         opposite = PlayerColor.RED
+
+    # a = len(possible_moves(new_board, player))
+    # b = len(possible_moves(new_board, opposite))
+    # return a - b
     return 0
