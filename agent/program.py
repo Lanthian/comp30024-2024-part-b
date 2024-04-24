@@ -5,6 +5,7 @@ from referee.game import PlayerColor, Action, PlaceAction, Coord
 from .prioritydict import *
 # from .tetrominoes import *
 from .control import *
+from .utils import render_board     # todo/temp
 
 
 class Gamestate:
@@ -111,6 +112,7 @@ class Agent:
         else:
             # Generate all possible next moves, greedy pick based on heuristic
             pd = PriorityDict()
+            pd.clear()   # todo/temp - needed as new PD not actually generated?
             for move in possible_moves(self.game.board, self.color):
                 # h = heuristic(self.game, move, self.color)
                 h = self.game.counts[other_color(self.color)] - self.game.counts[self.color]

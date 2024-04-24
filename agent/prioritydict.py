@@ -50,3 +50,8 @@ class PriorityDict:
         """Returns true if PriorityDict has no items, false otherwise."""
         return len(list(self.items.keys())) == 0
     
+    def clear(self):
+        """Clears the priority dictionary of all items."""
+        self.items.clear()
+        self.size = 0
+    
