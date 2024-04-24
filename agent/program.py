@@ -7,13 +7,32 @@ from .prioritydict import *
 from .control import *
 
 
-""" class Gamestate:
+class Gamestate:
+    """
+    Dataclass to represent a state of the game, storing additional information 
+    to reduce calculation time.
+    """
     # board representation
-    # current player
-    # heuristic value
-    # # below count done as to minimise recalculation of dictionary elements
-    # count of red
-    # count of blue """
+    board: dict[Coord, PlayerColor] = {} # Dictionary to maintain the game state
+    current: PlayerColor = PlayerColor.RED # Red starts
+    # todo - heuristic value stored here perhaps?
+
+    # Below count done as to minimise recalculation of dictionary elements
+    counts: dict[PlayerColor, int] = {PlayerColor.RED: 0, PlayerColor.BLUE: 0}
+
+
+    def move(self, action: Action, color: PlayerColor):
+        make_place(self.board, action, color)
+
+        # todo - not a good implementation atm, just temporary
+        self.counts[PlayerColor.RED] = 0
+        self.counts[PlayerColor.BLUE] = 0
+
+        for clr in self.board.values():
+            self.counts[clr] += 1
+
+        self.current = other_color(color)
+
 
 # python -m referee agent agent                 todo / temp
 class Agent:
@@ -22,6 +41,8 @@ class Agent:
     respond to various Tetress game events.
     """
     first_move: bool=True
+    color: PlayerColor
+    rival: PlayerColor
 
     def __init__(self, color: PlayerColor, **referee: dict):
         """
@@ -30,7 +51,10 @@ class Agent:
         """
         
         self.color = color
-        self.game_board = {}  # Dictionary to maintain the game state
+        self.rival = other_color(color)
+
+        self.game = Gamestate()
+
 
     """ todo; Lanthian - I think sparse game board is better here, but I've 
     commented the below out instead of deleting it just in case """
@@ -42,7 +66,7 @@ class Agent:
     #     """
     #     for r in range(BOARD_N):
     #         for c in range(BOARD_N):
-    #             self.game_board[Coord(r,c)] = None
+    #             self.board[Coord(r,c)] = None
     #             # sparse game board might be better here, but we'll see
 
 
@@ -87,8 +111,9 @@ class Agent:
         else:
             # Generate all possible next moves, greedy pick based on heuristic
             pd = PriorityDict()
-            for move in possible_moves(self.game_board, self.color):
-                h = heuristic(self.game_board, move, self.color)
+            for move in possible_moves(self.game.board, self.color):
+                # h = heuristic(self.game, move, self.color)
+                h = self.game.counts[other_color(self.color)] - self.game.counts[self.color]
                 pd.put(h, move) # insert all moves as equal cost for now...
 
             return pd.get()
@@ -104,7 +129,7 @@ class Agent:
         """
         # There is only one action type, PlaceAction. 
         # Clear filled lines as necessary.
-        make_place(self.game_board, action, color)
+        self.game.move(action, color)
         
         c1, c2, c3, c4 = action.coords
 
@@ -114,7 +139,7 @@ class Agent:
         print(f"Testing: {color} played PLACE action: {c1}, {c2}, {c3}, {c4}")
         
 
-def heuristic(board: dict[Coord, PlayerColor],
+def heuristic(game: dict[Coord, PlayerColor],
               move: PlaceAction,
               player: PlayerColor) -> float:
     # todo - flesh this code out
@@ -130,3 +155,11 @@ def heuristic(board: dict[Coord, PlayerColor],
     # b = len(possible_moves(new_board, opposite))
     # return a - b
     return 0
+
+
+def other_color(color: PlayerColor) -> PlayerColor:
+    # colors = [PlayerColor.RED, PlayerColor.BLUE]
+    # return [c for c in colors if c != color][0]
+    match color:
+        case PlayerColor.RED:  return PlayerColor.BLUE
+        case PlayerColor.BLUE: return PlayerColor.RED
