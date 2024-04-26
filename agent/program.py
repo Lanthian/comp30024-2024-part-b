@@ -14,6 +14,9 @@ from .control import possible_moves, make_place
 from .utils import render_board     # todo/temp
 
 # python -m referee agent agent     todo/temp
+# python -m referee agent agent_rdm
+# python -m referee agent_rdm agent
+# python -m referee agent_rdm agent_rdm
 
 class Gamestate:
     """
@@ -128,7 +131,7 @@ class Agent:
             pd.clear()   # todo/temp - needed as new PD not actually generated?
             for move in possible_moves(self.game.board, self.color):
                 child = self.game.child(move, self.color)
-                h = h1(child, self.color)
+                h = -h1(child, self.color)  # Inverting for use in Priority Dict
                 pd.put(h, move) # insert all moves as equal cost for now...
 
             return pd.get()
@@ -146,20 +149,20 @@ class Agent:
         # todo/temp - temporary printing of update call
         print(f"Testing: {color} played PLACE action: " +
               f"{", ".join([str(x) for x in action.coords])}")
-        
 
-# def heuristic(game: dict[Coord, PlayerColor],
-#               move: PlaceAction,
-#               player: PlayerColor) -> float:
-#     # todo - flesh this code out
-#     # new_board = make_place(board.copy(), move, player)
-
-#     # a = len(possible_moves(new_board, player))
-#     # b = len(possible_moves(new_board, player.opponent))
-#     # return a - b
-#     return 0
 
 def h1(game: Gamestate, color: PlayerColor) -> int:
-    return game.counts[color.opponent] - game.counts[color]
+    """Returns the integer token count difference between opponent and player 
+    `color` in a Gamestate `game`. A larger number is better for player."""
+    return game.counts[color] - game.counts[color.opponent]
+
+def h2(game: Gamestate, color: PlayerColor) -> int:
+    """Returns the interger possible move difference between opponent and player
+    `color` in a Gamestate `game`. A larger number is better for player."""
+    # todo / temp - wayyyy too slow at the moment. Not feasible to check unless 
+    # a faster method of generating moves is found
+    a = len(possible_moves(game.board, color))
+    b = len(possible_moves(game.board, color.opponent))
+    return a - b
 
 # python -m referee agent agent         todo/temp
