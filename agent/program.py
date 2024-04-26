@@ -166,3 +166,30 @@ def h2(game: Gamestate, color: PlayerColor) -> int:
     return a - b
 
 # python -m referee agent agent         todo/temp
+
+
+def minimax(game: Gamestate, player: PlayerColor, depth: int, heu) -> Action:
+    LOSS = -10000
+
+    if depth == 1:
+        # Bottom reached
+        return heu(game, game.current)
+    
+    else: 
+        # Find next level of the tree of possible states
+        moves = possible_moves(game.board, game.current)
+
+        # If no moves remaining, reflect this WIN or LOSS condition
+        if moves == 0:
+            if game.current == player: return (LOSS, game)
+            else: return (LOSS * -1, game)
+
+        # Proceed with minimum or maximum value depending on turn
+        heus = [minimax(game.child(p,game.current), 
+                        player, depth-1, heu) for p in moves]
+
+        if game.current == player:
+            return max(heus)
+        else: 
+            return min(heus)
+        
