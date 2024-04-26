@@ -4,3 +4,10 @@ Cureent implementation breaks due to an illegal action taken - this seems to sug
 * Rendered the board using utils.py - issue exists in move generation, not board state storing.
   * ACTUALLY, turns out the issue was that the PriorityDict that stored possible moves wasn't clearing between calls in 
     program.py action(). Implementing a simple .clear() method into prioritydict.py fixed this issue.
+
+# 2024.04.26
+Things we need to decide:
+* How will we store game states (parent-children). Tree structure of some kind, but is each level sorted? New structure
+  defined to handle alpha beta?
+* What kinds of searches we want to code. Minimax? Monte Carlo?
+* What heuristics we want to use to evaluate gamestates
