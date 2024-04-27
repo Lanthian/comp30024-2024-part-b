@@ -130,14 +130,14 @@ class Agent:
             pd = PriorityDict()
             pd.clear()   # todo/temp - needed as new PD not actually generated?
 
-            return minimax(self.game,1,h1)
+            # return minimax(self.game,2,h1)        todo - to inefficient to run
 
-            # for move in possible_moves(self.game.board, self.color):
-            #     child = self.game.child(move, self.color)
-            #     h = -h1(child, self.color)  # Inverting for use in Priority Dict
-            #     pd.put(h, move) # insert all moves as equal cost for now...
+            for move in possible_moves(self.game.board, self.color):
+                child = self.game.child(move, self.color)
+                h = -h1(child, self.color)  # Inverting for use in Priority Dict
+                pd.put(h, move) # insert all moves as equal cost for now...
 
-            # return pd.get()
+            return pd.get()
 
 
     def update(self, color: PlayerColor, action: Action, **referee: dict):
@@ -171,7 +171,10 @@ def h2(game: Gamestate, color: PlayerColor) -> int:
 # python -m referee agent agent         todo/temp
 
 
+# todo - temp, fix this up so it's neater, more sensible, and more efficient.
+
 def sub_minimax(game: Gamestate, move: Action, player: PlayerColor, depth: int, heu) -> tuple[int, Action]:
+    VAL_INDEX = 0
     WIN = 10000
     LOSS = -WIN
 
@@ -194,20 +197,27 @@ def sub_minimax(game: Gamestate, move: Action, player: PlayerColor, depth: int, 
 
         if game.current == player:
             # Player chooses highest next value move
-            return max(heus)
+            return max(heus, key=lambda x: x[VAL_INDEX])
         else: 
             # Opponent chooses lowest next value move
-            return min(heus)
+            return min(heus, key=lambda x: x[VAL_INDEX])
         
 def minimax(game: Gamestate, depth: int, heu) -> Action | None:
-    if depth == 0: return None
+    VAL_INDEX = 0
+    ACTION_INDEX = 1
+    
+    # Can't search less than 1
+    if depth <= 0: return None
 
     else: 
         # Find next level of the tree of possible states
         moves = possible_moves(game.board, game.current)
         if len(moves) == 0: return None
 
-        ACTION_INDEX = 1
-        m = max([sub_minimax(game.child(p,game.current), p, game.current, depth-1, heu) for p in moves])
+        # Recurse down this level to depth `depth`, returning best move
+        m = max([sub_minimax(game.child(p,game.current), p, game.current, 
+                             depth-1, heu) for p in moves], 
+                             key=lambda x: x[VAL_INDEX])
         return m[ACTION_INDEX]
-    
+
+# python -m referee agent agent         todo/temp

@@ -31,3 +31,10 @@ Messing around with competing agent against agent_rdm at the moment, I've come t
   any kind of non-hardcoded first move is introduced.
 * Maybe just lucky/unlucky, but across testing it seems like the red player (first to move) wins more often than blue.
   * Hard to tell if this is from initial tile placement being red sided(?) or just a quirk of going first for this game.
+
+# 2024.04.27
+Some minor testing with new minimax implementation is needed, however too inefficient at the moment to even run depth 2. 
+* Major changes to minimax structure, or some other form of alpha-beta pruning will be necessary to try reaching deeper
+* Look into fixing structure to be faster, or only compute once number of possible moves is below some threshold (to
+  minimise branching - an idea expressed by Anthony in Part A).
+* Curious if a MCTS implementation can be done easily or not - might be the next thing to try
