@@ -173,7 +173,8 @@ def h2(game: Gamestate, color: PlayerColor) -> int:
 
 # todo - temp, fix this up so it's neater, more sensible, and more efficient.
 
-def sub_minimax(game: Gamestate, move: Action, player: PlayerColor, depth: int, heu) -> tuple[int, Action]:
+def sub_minimax(game: Gamestate, move: Action, player: PlayerColor, 
+                depth: int, heu, a, b) -> tuple[int, Action]:
     VAL_INDEX = 0
     WIN = 10000
     LOSS = -WIN
@@ -187,7 +188,7 @@ def sub_minimax(game: Gamestate, move: Action, player: PlayerColor, depth: int, 
         moves = possible_moves(game.board, game.current)
 
         # If no moves remaining, reflect this WIN or LOSS condition from player perspective
-        if moves == 0:
+        if len(moves) == 0:
             if game.current == player: return (LOSS, move)
             else: return (WIN, move)
 
@@ -216,8 +217,68 @@ def minimax(game: Gamestate, depth: int, heu) -> Action | None:
 
         # Recurse down this level to depth `depth`, returning best move
         m = max([sub_minimax(game.child(p,game.current), p, game.current, 
-                             depth-1, heu) for p in moves], 
+                             depth-1, heu, -10000, 10000) for p in moves], 
                              key=lambda x: x[VAL_INDEX])
         return m[ACTION_INDEX]
 
 # python -m referee agent agent         todo/temp
+
+
+# todo - wip
+def ab_max(game: Gamestate, move: Action, player: PlayerColor, 
+                depth: int, heu, a, b) -> tuple[int, Action]:
+    VAL_INDEX = 0
+    WIN = 10000
+    LOSS = -WIN
+
+    moves = []
+
+    # Cutoff state
+    if depth == 0:
+        # Bottom reached
+        return (heu(game, player), move)
+    else: 
+        # Find next level of the tree of possible states
+        moves = possible_moves(game.board, game.current)
+        # If no moves remaining, reflect this WIN or LOSS condition from player perspective
+        if len(moves) == 0:
+            if game.current == player: return (LOSS, move)
+            else: return (WIN, move)
+
+
+        # Otherwise, proceed with maximum value depending on turn
+        heus = []
+        for p in moves:
+            s = game.child(p,game.current)
+            a = max(a, ab_min(game, move, player, depth-1, heu, a, b), 
+                    key=lambda x: x[VAL_INDEX])
+            if a[VAL_INDEX] >= b[VAL_INDEX]: return b
+        return a
+    
+def ab_min(game: Gamestate, move: Action, player: PlayerColor, 
+                depth: int, heu, a, b) -> tuple[int, Action]:
+    VAL_INDEX = 0
+    WIN = 10000
+    LOSS = -WIN
+
+    # Cutoff state
+    if depth == 0:
+        # Bottom reached
+        return (heu(game, player), move)
+    else: 
+        # Find next level of the tree of possible states
+        moves = possible_moves(game.board, game.current)
+        # If no moves remaining, reflect this WIN or LOSS condition from player perspective
+        if len(moves) == 0:
+            if game.current == player: return (LOSS, move)
+            else: return (WIN, move)
+
+
+        # Otherwise, proceed with minimum value depending on turn
+        heus = []
+        for p in moves:
+            s = game.child(p,game.current)
+            b =  min(b, ab_max(game, move, player, depth-1, heu, a, b), 
+                    key=lambda x: x[VAL_INDEX])
+            if a[VAL_INDEX] >= b[VAL_INDEX]: return a
+        return b
