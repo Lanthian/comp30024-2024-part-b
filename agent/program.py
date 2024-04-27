@@ -129,12 +129,15 @@ class Agent:
             # Generate all possible next moves, greedy pick based on heuristic
             pd = PriorityDict()
             pd.clear()   # todo/temp - needed as new PD not actually generated?
-            for move in possible_moves(self.game.board, self.color):
-                child = self.game.child(move, self.color)
-                h = -h1(child, self.color)  # Inverting for use in Priority Dict
-                pd.put(h, move) # insert all moves as equal cost for now...
 
-            return pd.get()
+            return minimax(self.game,1,h1)
+
+            # for move in possible_moves(self.game.board, self.color):
+            #     child = self.game.child(move, self.color)
+            #     h = -h1(child, self.color)  # Inverting for use in Priority Dict
+            #     pd.put(h, move) # insert all moves as equal cost for now...
+
+            # return pd.get()
 
 
     def update(self, color: PlayerColor, action: Action, **referee: dict):
@@ -168,28 +171,43 @@ def h2(game: Gamestate, color: PlayerColor) -> int:
 # python -m referee agent agent         todo/temp
 
 
-def minimax(game: Gamestate, player: PlayerColor, depth: int, heu) -> Action:
-    LOSS = -10000
+def sub_minimax(game: Gamestate, move: Action, player: PlayerColor, depth: int, heu) -> tuple[int, Action]:
+    WIN = 10000
+    LOSS = -WIN
 
-    if depth == 1:
+    if depth == 0:
         # Bottom reached
-        return heu(game, game.current)
+        return (heu(game, player), move)
     
     else: 
         # Find next level of the tree of possible states
         moves = possible_moves(game.board, game.current)
 
-        # If no moves remaining, reflect this WIN or LOSS condition
+        # If no moves remaining, reflect this WIN or LOSS condition from player perspective
         if moves == 0:
-            if game.current == player: return (LOSS, game)
-            else: return (LOSS * -1, game)
+            if game.current == player: return (LOSS, move)
+            else: return (WIN, move)
 
         # Proceed with minimum or maximum value depending on turn
-        heus = [minimax(game.child(p,game.current), 
+        heus = [sub_minimax(game.child(p,game.current), move, 
                         player, depth-1, heu) for p in moves]
 
         if game.current == player:
+            # Player chooses highest next value move
             return max(heus)
         else: 
+            # Opponent chooses lowest next value move
             return min(heus)
         
+def minimax(game: Gamestate, depth: int, heu) -> Action | None:
+    if depth == 0: return None
+
+    else: 
+        # Find next level of the tree of possible states
+        moves = possible_moves(game.board, game.current)
+        if len(moves) == 0: return None
+
+        ACTION_INDEX = 1
+        m = max([sub_minimax(game.child(p,game.current), p, game.current, depth-1, heu) for p in moves])
+        return m[ACTION_INDEX]
+    
