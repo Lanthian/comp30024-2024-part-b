@@ -10,10 +10,12 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 
 from referee.game import PlayerColor, Action, PlaceAction, Coord
 from .prioritydict import PriorityDict
-from .control import possible_moves, make_place
+from .control import possible_moves, make_place, first_move
 from .utils import render_board     # todo/temp
 
 # python -m referee agent agent     todo/temp
+
+
 
 class Gamestate:
     """
@@ -96,11 +98,6 @@ class Agent:
 
         Need to update this for action
         """
-
-        # Below we have hardcoded two actions to be played depending on whether
-        # the agent is playing as BLUE or RED. Obviously this won't work beyond
-        # the initial moves of the game, so you should use some game playing
-        # technique(s) to determine the best action to take.
         
         if self.first_move:
             # todo - First move approach will need to be designed still
@@ -110,15 +107,11 @@ class Agent:
                 case PlayerColor.RED:
                     print("Testing: RED is playing a PLACE action")
                     #nextMove = self.getNextMove(self.color)
-                    return PlaceAction(
-                        Coord(5, 4), Coord(3, 4), Coord(4, 3), Coord(4, 4)
-                    )
+                    return first_move(self.game.board)
                 case PlayerColor.BLUE:
                     print("Testing: BLUE is playing a PLACE action")
                     #nextMove = self.getNextMove(self.color)
-                    return PlaceAction(
-                        Coord(2, 3), Coord(2, 4), Coord(2, 5), Coord(2, 6)
-                    )
+                    return first_move(self.game.board)
         
         # todo - temporary, unintelligent implementation
         else:
@@ -146,6 +139,8 @@ class Agent:
         # todo/temp - temporary printing of update call
         print(f"Testing: {color} played PLACE action: " +
               f"{", ".join([str(x) for x in action.coords])}")
+        
+
         
 
 # def heuristic(game: dict[Coord, PlayerColor],
