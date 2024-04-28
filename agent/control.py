@@ -18,18 +18,25 @@ def is_I_shape(action: PlaceAction) -> bool:
     return len(set(x_vals)) == 1 or len(set(y_vals)) == 1
 
 def is_adjacent(coord, board_keys):
-    """Check if the coordinate is adjacent to any placed coord in the board, within valid bounds."""
-    x, y = coord.c, coord.r
-    # Define valid moves within the board boundaries
-    possible_moves = [
-        (nx, ny) for nx, ny in [(x-1, y), (x+1, y), (x, y-1), (x, y+1)]
-        if 0 <= nx < BOARD_N and 0 <= ny < BOARD_N
+    """ Check if the coordinate has at least two adjacent sides touching the existing blocks on a toroidal board. """
+    adjacent_count = 0
+    # Check four possible adjacent positions: up, down, left, right
+    # Adjust for toroidal wrap-around using modulo board_size
+    directions = [
+        (-1, 0),  # Up
+        (1, 0),   # Down
+        (0, -1),  # Left
+        (0, 1)    # Right
     ]
-    return any(Coord(nx, ny) in board_keys for nx, ny in possible_moves)
-
-def count_adjacent(coords, board_keys):
-    """Count how many coordinates are adjacent to existing pieces."""
-    return sum(is_adjacent(coord, board_keys) for coord in coords)
+    x_val = coord.c
+    y_val = coord.r
+    for dx, dy in directions:
+        adjacent_coord = ((y_val + dy) % BOARD_N, (x_val + dx) % BOARD_N)
+        print(adjacent_coord)
+        if adjacent_coord in board_keys:
+            adjacent_count += 1
+    print(adjacent_count)
+    return adjacent_count >= 2
 
 def first_move(board: dict):
     """
@@ -41,17 +48,19 @@ def first_move(board: dict):
         non_I_actions = [action for action in possible_actions if not is_I_shape(action)] #  shape is not straight to limit risk in one axes
         return random.choice(non_I_actions)
     else:
-        occupied_coords = list(board.keys())
-        possible_actions = tetrominoes_plus(random.choice(occupied_coords), set(board.keys()))
-        non_I_actions = [action for action in possible_actions if not is_I_shape(action)] #  shape is not straight to limit risk in one axes
-        return random.choice(non_I_actions)
-        """ to be worked on, makes it so that 2nd move has 2 adjacent coords 
         board_keys = set(board.keys())
-        occupied_coords = list(board.keys())
-        possible_actions = tetrominoes_plus(random.choice(occupied_coords), set(board.keys()))
-        valid_actions = [action for action in possible_actions if count_adjacent(action.coords, board_keys) >= 2]
-        return random.choice(valid_actions)
-        """
+        print(board_keys)
+        possible_actions = []
+        for coord in board_keys:
+            actions = tetrominoes_plus(coord, set(board.keys()))  # Assume this returns a list of PlaceAction
+            possible_actions.extend(actions)  # Use extend to flatten the list into possible_actions
+
+        valid_actions = [action for action in possible_actions if sum(is_adjacent(coord, board_keys) for coord in action.coords) >= 1]
+        print(board_keys)
+        return random.choice(valid_actions) 
+        
+    
+
     
     
 def possible_moves(board: dict[Coord, PlayerColor], 
