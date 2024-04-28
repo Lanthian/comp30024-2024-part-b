@@ -14,8 +14,9 @@ from .control import possible_moves, make_place, first_move
 from .utils import render_board     # todo/temp
 
 # python -m referee agent agent     todo/temp
-
-
+# python -m referee agent agent_rdm
+# python -m referee agent_rdm agent
+# python -m referee agent_rdm agent_rdm
 
 class Gamestate:
     """
@@ -119,9 +120,12 @@ class Agent:
             # Generate all possible next moves, greedy pick based on heuristic
             pd = PriorityDict()
             pd.clear()   # todo/temp - needed as new PD not actually generated?
+
+            # return minimax(self.game,2,h1)        todo - to inefficient to run
+
             for move in possible_moves(self.game.board, self.color):
                 child = self.game.child(move, self.color)
-                h = h1(child, self.color)
+                h = -h1(child, self.color)  # Inverting for use in Priority Dict
                 pd.put(h, move) # insert all moves as equal cost for now...
 
             return pd.get()
@@ -139,9 +143,7 @@ class Agent:
         # todo/temp - temporary printing of update call
         print(f"Testing: {color} played PLACE action: " +
               f"{", ".join([str(x) for x in action.coords])}")
-        
 
-        
 
 # def heuristic(game: dict[Coord, PlayerColor],
 #               move: PlaceAction,
@@ -155,6 +157,130 @@ class Agent:
 #     return 0
 
 def h1(game: Gamestate, color: PlayerColor) -> int:
-    return game.counts[color.opponent] - game.counts[color]
+    """Returns the integer token count difference between opponent and player 
+    `color` in a Gamestate `game`. A larger number is better for player."""
+    return game.counts[color] - game.counts[color.opponent]
+
+def h2(game: Gamestate, color: PlayerColor) -> int:
+    """Returns the interger possible move difference between opponent and player
+    `color` in a Gamestate `game`. A larger number is better for player."""
+    # todo / temp - wayyyy too slow at the moment. Not feasible to check unless 
+    # a faster method of generating moves is found
+    a = len(possible_moves(game.board, color))
+    b = len(possible_moves(game.board, color.opponent))
+    return a - b
 
 # python -m referee agent agent         todo/temp
+
+
+# todo - temp, fix this up so it's neater, more sensible, and more efficient.
+
+def sub_minimax(game: Gamestate, move: Action, player: PlayerColor, 
+                depth: int, heu, a, b) -> tuple[int, Action]:
+    VAL_INDEX = 0
+    WIN = 10000
+    LOSS = -WIN
+
+    if depth == 0:
+        # Bottom reached
+        return (heu(game, player), move)
+    
+    else: 
+        # Find next level of the tree of possible states
+        moves = possible_moves(game.board, game.current)
+
+        # If no moves remaining, reflect this WIN or LOSS condition from player perspective
+        if len(moves) == 0:
+            if game.current == player: return (LOSS, move)
+            else: return (WIN, move)
+
+        # Proceed with minimum or maximum value depending on turn
+        heus = [sub_minimax(game.child(p,game.current), move, 
+                        player, depth-1, heu) for p in moves]
+
+        if game.current == player:
+            # Player chooses highest next value move
+            return max(heus, key=lambda x: x[VAL_INDEX])
+        else: 
+            # Opponent chooses lowest next value move
+            return min(heus, key=lambda x: x[VAL_INDEX])
+        
+def minimax(game: Gamestate, depth: int, heu) -> Action | None:
+    VAL_INDEX = 0
+    ACTION_INDEX = 1
+    
+    # Can't search less than 1
+    if depth <= 0: return None
+
+    else: 
+        # Find next level of the tree of possible states
+        moves = possible_moves(game.board, game.current)
+        if len(moves) == 0: return None
+
+        # Recurse down this level to depth `depth`, returning best move
+        m = max([sub_minimax(game.child(p,game.current), p, game.current, 
+                             depth-1, heu, -10000, 10000) for p in moves], 
+                             key=lambda x: x[VAL_INDEX])
+        return m[ACTION_INDEX]
+
+# python -m referee agent agent         todo/temp
+
+
+# todo - wip
+def ab_max(game: Gamestate, move: Action, player: PlayerColor, 
+                depth: int, heu, a, b) -> tuple[int, Action]:
+    VAL_INDEX = 0
+    WIN = 10000
+    LOSS = -WIN
+
+    moves = []
+
+    # Cutoff state
+    if depth == 0:
+        # Bottom reached
+        return (heu(game, player), move)
+    else: 
+        # Find next level of the tree of possible states
+        moves = possible_moves(game.board, game.current)
+        # If no moves remaining, reflect this WIN or LOSS condition from player perspective
+        if len(moves) == 0:
+            if game.current == player: return (LOSS, move)
+            else: return (WIN, move)
+
+
+        # Otherwise, proceed with maximum value depending on turn
+        heus = []
+        for p in moves:
+            s = game.child(p,game.current)
+            a = max(a, ab_min(game, move, player, depth-1, heu, a, b), 
+                    key=lambda x: x[VAL_INDEX])
+            if a[VAL_INDEX] >= b[VAL_INDEX]: return b
+        return a
+    
+def ab_min(game: Gamestate, move: Action, player: PlayerColor, 
+                depth: int, heu, a, b) -> tuple[int, Action]:
+    VAL_INDEX = 0
+    WIN = 10000
+    LOSS = -WIN
+
+    # Cutoff state
+    if depth == 0:
+        # Bottom reached
+        return (heu(game, player), move)
+    else: 
+        # Find next level of the tree of possible states
+        moves = possible_moves(game.board, game.current)
+        # If no moves remaining, reflect this WIN or LOSS condition from player perspective
+        if len(moves) == 0:
+            if game.current == player: return (LOSS, move)
+            else: return (WIN, move)
+
+
+        # Otherwise, proceed with minimum value depending on turn
+        heus = []
+        for p in moves:
+            s = game.child(p,game.current)
+            b =  min(b, ab_max(game, move, player, depth-1, heu, a, b), 
+                    key=lambda x: x[VAL_INDEX])
+            if a[VAL_INDEX] >= b[VAL_INDEX]: return a
+        return b
