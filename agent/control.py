@@ -32,10 +32,10 @@ def is_adjacent(coord, board_keys):
     y_val = coord.r
     for dx, dy in directions:
         adjacent_coord = ((y_val + dy) % BOARD_N, (x_val + dx) % BOARD_N)
-        print(adjacent_coord)
+        #print(adjacent_coord)
         if adjacent_coord in board_keys:
             adjacent_count += 1
-    print(adjacent_count)
+    #print(adjacent_count)
     return adjacent_count >= 2
 
 def first_move(board: dict):
@@ -48,6 +48,11 @@ def first_move(board: dict):
         non_I_actions = [action for action in possible_actions if not is_I_shape(action)] #  shape is not straight to limit risk in one axes
         return random.choice(non_I_actions)
     else:
+        occupied_coords = list(board.keys())
+        possible_actions = tetrominoes_plus(random.choice(occupied_coords), set(board.keys()))
+        non_I_actions = [action for action in possible_actions if not is_I_shape(action)] #  shape is not straight to limit risk in one axes
+        return random.choice(non_I_actions)
+        """"
         board_keys = set(board.keys())
         print(board_keys)
         possible_actions = []
@@ -58,6 +63,7 @@ def first_move(board: dict):
         valid_actions = [action for action in possible_actions if sum(is_adjacent(coord, board_keys) for coord in action.coords) >= 1]
         print(board_keys)
         return random.choice(valid_actions) 
+        """
         
     
 
