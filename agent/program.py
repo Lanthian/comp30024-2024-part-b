@@ -11,7 +11,7 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 # === Imports ===
 from math import inf
 
-from referee.game import PlayerColor, Action, PlaceAction, Coord
+from referee.game import Action, Coord, PlaceAction, PlayerColor, Direction
 
 from .prioritydict import PriorityDict
 from .control import possible_moves, make_place, first_move
@@ -38,7 +38,6 @@ class Gamestate:
     board: dict[Coord, PlayerColor] = {} 
     current: PlayerColor = PlayerColor.RED      # Red starts
     turn: int = 1                               # First turn is turn 1
-    # todo - heuristic value stored here perhaps?
 
     # Below count done as to minimise recalculation of dictionary elements
     counts: dict[PlayerColor, int] = {PlayerColor.RED: 0, PlayerColor.BLUE: 0}
@@ -114,7 +113,7 @@ class Agent:
         else:
             # Intelligently select next move
             # return minimax(self.game,1,h1)     # todo - too inefficient to run
-            return ab(self.game, self.color, 2, h1)
+            return ab(self.game, self.color, 2, h3)
 
             # # Generate all possible next moves, greedy pick based on heuristic
             # pd = PriorityDict()
@@ -145,17 +144,39 @@ class Agent:
 
 def h1(game: Gamestate, color: PlayerColor) -> int:
     """Returns the integer token count difference between opponent and player 
-    `color` in a Gamestate `game`. A larger number is better for player."""
+    `color` in a Gamestate `game`. A larger number is better for player.
+    Goal: Maximise difference in player tiles on board."""
     return game.counts[color] - game.counts[color.opponent]
 
 def h2(game: Gamestate, color: PlayerColor) -> int:
     """Returns the interger possible move difference between opponent and player
-    `color` in a Gamestate `game`. A larger number is better for player."""
+    `color` in a Gamestate `game`. A larger number is better for player.
+    Goal: Maximise difference in remaining possible moves between players."""
     # todo / temp - wayyyy too slow at the moment. Not feasible to check unless 
     # a faster method of generating moves is found
     a = len(possible_moves(game.board, color))
     b = len(possible_moves(game.board, color.opponent))
     return a - b
+
+def h3(game: Gamestate, color: PlayerColor) -> float:
+    """Returns the float neighbouring air tile difference between opponent and
+    player `color` in a Gamestate `game`. A larger number is player favoured. 
+    Balance between tiles can be altered by changing a & b values.
+    Goal: Minimise possible placement tiles opponent has (suffocate them)
+      while maximising a players own possible placement tiles."""
+    blank_nbrs = {color: set(), color.opponent: set()}
+    a = 0.1
+    b = 1
+
+    # Iterate through all tiles and their neighbours
+    for (coord, clr) in game.board.items():
+        for dir in [d.value for d in Direction]:
+            new = Coord.__add__(coord, dir)
+            # If neighbour is empty air, add one to relevant tally
+            if new not in game.board:
+                blank_nbrs[clr].add(new)
+
+    return a*len(blank_nbrs[color]) - b*len(blank_nbrs[color.opponent])
 
 
 def minimax(game: Gamestate, depth: int, heu) -> Action | None:
