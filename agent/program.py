@@ -8,14 +8,22 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 # COMP30024 Artificial Intelligence, Semester 1 2024
 # Project Part B: Game Playing Agent
 
-from dataclasses import dataclass
-from functools import total_ordering
+# === Imports ===
+from math import inf
 
 from referee.game import PlayerColor, Action, PlaceAction, Coord
+
 from .prioritydict import PriorityDict
 from .control import possible_moves, make_place, first_move
 from .utils import render_board     # todo/temp
+from .valwrap import ValWrap
 
+# === Constants ===
+WIN = 10000
+LOSS = -WIN
+TURN_CAP = 150
+
+# === Terminal prompts ===
 # python -m referee agent agent     todo/temp
 # python -m referee agent agent_rdm
 # python -m referee agent_rdm agent
@@ -29,6 +37,7 @@ class Gamestate:
     # Board represented as a sparse dictionary to save space
     board: dict[Coord, PlayerColor] = {} 
     current: PlayerColor = PlayerColor.RED      # Red starts
+    turn: int = 1                               # First turn is turn 1
     # todo - heuristic value stored here perhaps?
 
     # Below count done as to minimise recalculation of dictionary elements
@@ -46,6 +55,7 @@ class Gamestate:
             self.counts[clr] += 1
 
         self.current = color.opponent
+        self.turn += 1
 
     def copy(self) -> Gamestate:
         new = Gamestate()
@@ -60,31 +70,6 @@ class Gamestate:
         return new
 
 
-@dataclass(frozen=True, slots=True)
-@total_ordering
-class ValWrap():
-    """
-    Storage of a Gamestate alongside a heuristic int so that gamestates can be
-    compared.
-    """
-    val: int                    # ordering value to compare against other nodes
-    item: Gamestate | None
-
-    # def __init__(self, value: int, game: Gamestate | None = None):
-    #     """
-    #     Constructor method for fleshing out a node. Gamestate has value `None`
-    #     by default.
-    #     """
-    #     self.val = value
-    #     self.item = game
-
-    def __eq__(self, other: ValWrap):
-        return self.val == other.val
-    
-    def __lt__(self, other: ValWrap):
-        return self.val < other.val
-
-
 class Agent:
     """
     This class is the "entry point" for an agent, providing an interface to
@@ -92,7 +77,6 @@ class Agent:
     """
     first_move: bool=True
     color: PlayerColor
-    rival: PlayerColor
 
     def __init__(self, color: PlayerColor, **referee: dict):
         """
@@ -101,24 +85,7 @@ class Agent:
         """
         
         self.color = color
-        self.rival = color.opponent
-
         self.game = Gamestate()
-
-
-    """ todo; Lanthian - I think sparse game board is better here, but I've 
-    commented the below out instead of deleting it just in case """
-    #     self.initialize_game_board()
-
-    # def initialize_game_board(self):
-    #     """
-    #     Initialize or reset the game board to an empty state.
-    #     """
-    #     for r in range(BOARD_N):
-    #         for c in range(BOARD_N):
-    #             self.board[Coord(r,c)] = None
-    #             # sparse game board might be better here, but we'll see
-
 
     def action(self, **referee: dict) -> Action:
         """
@@ -144,22 +111,19 @@ class Agent:
                     # return PlaceAction(Coord(2, 3), Coord(2, 4), Coord(2, 5), Coord(2, 6))
                     return first_move(self.game.board)
         
-        # todo - temporary, unintelligent implementation
         else:
+            # Intelligently select next move
+            # return minimax(self.game,1,h1)     # todo - too inefficient to run
+            return ab(self.game, self.color, 2, h1)
 
-            # Generate all possible next moves, greedy pick based on heuristic
-            pd = PriorityDict()
-            pd.clear()   # todo/temp - needed as new PD not actually generated?
-
-            # return minimax(self.game,2,h1)        todo - to inefficient to run
-            # return ab(self.game, self.color, 1, h1)
-
-            for move in possible_moves(self.game.board, self.color):
-                child = self.game.child(move, self.color)
-                h = -h1(child, self.color)  # Inverting for use in Priority Dict
-                pd.put(h, move) # insert all moves as equal cost for now...
-
-            return pd.get()
+            # # Generate all possible next moves, greedy pick based on heuristic
+            # pd = PriorityDict()
+            # pd.clear()   # todo/temp - needed as new PD not actually generated?
+            # for move in possible_moves(self.game.board, self.color):
+            #     child = self.game.child(move, self.color)
+            #     h = -h1(child, self.color)  # Inverting for use in Priority Dict
+            #     pd.put(h, move) # insert all moves as equal cost for now...
+            # return pd.get()
 
 
     def update(self, color: PlayerColor, action: Action, **referee: dict):
@@ -170,22 +134,14 @@ class Agent:
         # There is only one action type, PlaceAction. 
         # Clear filled lines as necessary.
         self.game.move(action, color)
+
+        # todo - switch Agents h or move making strategy of choice depending on 
+        #        turn count here.
         
         # todo/temp - temporary printing of update call
         print(f"Testing: {color} played PLACE action: " +
               f"{", ".join([str(x) for x in action.coords])}")
 
-
-# def heuristic(game: dict[Coord, PlayerColor],
-#               move: PlaceAction,
-#               player: PlayerColor) -> float:
-#     # todo - flesh this code out
-#     # new_board = make_place(board.copy(), move, player)
-
-#     # a = len(possible_moves(new_board, player))
-#     # b = len(possible_moves(new_board, player.opponent))
-#     # return a - b
-#     return 0
 
 def h1(game: Gamestate, color: PlayerColor) -> int:
     """Returns the integer token count difference between opponent and player 
@@ -201,45 +157,13 @@ def h2(game: Gamestate, color: PlayerColor) -> int:
     b = len(possible_moves(game.board, color.opponent))
     return a - b
 
-# python -m referee agent agent         todo/temp
 
-
-# todo - temp, fix this up so it's neater, more sensible, and more efficient.
-
-def sub_minimax(game: Gamestate, move: Action, player: PlayerColor, 
-                depth: int, heu, a, b) -> tuple[int, Action]:
-    VAL_INDEX = 0
-    WIN = 10000
-    LOSS = -WIN
-
-    if depth == 0:
-        # Bottom reached
-        return (heu(game, player), move)
-    
-    else: 
-        # Find next level of the tree of possible states
-        moves = possible_moves(game.board, game.current)
-
-        # If no moves remaining, reflect this WIN or LOSS condition from player perspective
-        if len(moves) == 0:
-            if game.current == player: return (LOSS, move)
-            else: return (WIN, move)
-
-        # Proceed with minimum or maximum value depending on turn
-        heus = [sub_minimax(game.child(p,game.current), move, 
-                        player, depth-1, heu) for p in moves]
-
-        if game.current == player:
-            # Player chooses highest next value move
-            return max(heus, key=lambda x: x[VAL_INDEX])
-        else: 
-            # Opponent chooses lowest next value move
-            return min(heus, key=lambda x: x[VAL_INDEX])
-        
 def minimax(game: Gamestate, depth: int, heu) -> Action | None:
-    VAL_INDEX = 0
-    ACTION_INDEX = 1
-    
+    """Origin point for default minimax approach to searching through next
+    possible moves for a gamestate `game`. Remaining max recursions are 
+    determined from `depth`, and bottom nodes evaluated according to the
+    heuristic `heu`.
+    Returns an Action, None if depth too shallow."""
     # Can't search less than 1
     if depth <= 0: return None
 
@@ -250,70 +174,85 @@ def minimax(game: Gamestate, depth: int, heu) -> Action | None:
 
         # Recurse down this level to depth `depth`, returning best move
         m = max([sub_minimax(game.child(p,game.current), p, game.current, 
-                             depth-1, heu, -10000, 10000) for p in moves], 
-                             key=lambda x: x[VAL_INDEX])
-        return m[ACTION_INDEX]
+                             depth-1, heu) for p in moves])
+        return m.item
+
+def sub_minimax(game: Gamestate, move: Action, player: PlayerColor, 
+                depth: int, heu) -> ValWrap:
+    """minimax() sub-function. Depending on players turn, either maximises
+    or minimises outcome. Returns a ValWrap-ed Action."""
+    if depth == 0:
+        # Bottom reached
+        return ValWrap(heu(game, player), move)
+    
+    else: 
+        # Find next level of the tree of possible states
+        moves = possible_moves(game.board, game.current)
+
+        # If no moves remaining, reflect this WIN/LOSS from player's perspective
+        if len(moves) == 0:
+            if game.current == player: return (LOSS, move)
+            else: return (WIN, move)
+
+        # Proceed with minimum or maximum value depending on turn
+        heus = [sub_minimax(game.child(p,game.current), move, 
+                        player, depth-1, heu) for p in moves]
+
+        if game.current == player:
+            # Player chooses highest next value move
+            return max(heus)
+        else: 
+            # Opponent chooses lowest next value move
+            return min(heus)
+
+
+def ab(game: Gamestate, player: PlayerColor, depth: int, heu) -> Action | None:
+    """The origin point for an alpha-beta pruning minimax approach to searching
+    through next possible moves for a gamestate `game`. Remaining max recursions
+    are determined from `depth`, and bottom nodes are evaluated according to the
+    heuristic `heu` for optimal color `player`.
+    Returns an Action, None if depth too shallow or no possible moves."""
+    # Can't search less than 1
+    if depth <= 0: return None
+
+    a = ValWrap(-inf, None)
+    b = ValWrap(inf, None)
+    return sub_ab(True, game, None, player, depth, heu, a, b).item
+
+def sub_ab(max_flag: bool, game: Gamestate, move: Action, player: PlayerColor, 
+                depth: int, heu, a: ValWrap, b: ValWrap) -> ValWrap:
+    """ab() sub-function. Maximises or minimises outcome depending on 
+    alternating depth level. Equivalent to ab_max if `max_flag` is set to True, 
+    ab_min if set to False. Returns a ValWrap-ed Action."""
+    # Check cutoff states
+    if depth == 0:
+        # Bottom reached
+        return ValWrap(heu(game, player), move)
+    else: 
+        # Find next level of the tree of possible states
+        next_moves = possible_moves(game.board, game.current)
+        # If no moves remaining, reflect this WIN/LOSS from player's perspective
+        if len(next_moves) == 0:
+            if game.current == player: return ValWrap(LOSS, move)
+            else: return ValWrap(WIN, move)
+            
+
+        # Otherwise, proceed with max/min value search depending on turn
+        for p in next_moves:
+            s = game.child(p,game.current)
+            m = p if (move == None) else move
+
+            # Update maximum possible outcome if flag true
+            if max_flag:
+                a = max(a, sub_ab(False, s, m, player, depth-1, heu, a, b))
+                if a.val >= b.val: return b
+            # Update minimum possible outcome if flag false
+            else:
+                b =  min(b, sub_ab(True, s, m, player, depth-1, heu, a, b))
+                if b.val <= a.val: return a
+
+        # Return a / b if no turnover
+        if max_flag: return a
+        else: return b
 
 # python -m referee agent agent         todo/temp
-
-
-# todo - wip
-def ab(game: Gamestate, player: PlayerColor, depth: int, heu) -> Action:
-    a = ValWrap(-100000, None)
-    b = ValWrap(100000, None)
-    return ab_max(game, None, player, depth, heu, a, b).item
-
-
-def ab_max(game: Gamestate, move: Action, player: PlayerColor, 
-                depth: int, heu, a: ValWrap, b: ValWrap) -> ValWrap:
-    WIN = 10000
-    LOSS = -WIN
-
-    moves = []
-
-    # Cutoff state
-    if depth == 0:
-        # Bottom reached
-        return ValWrap(heu(game, player), move)
-    else: 
-        # Find next level of the tree of possible states
-        moves = possible_moves(game.board, game.current)
-        # If no moves remaining, reflect this WIN or LOSS condition from player perspective
-        if len(moves) == 0:
-            if game.current == player: return ValWrap(LOSS, move)
-            else: return ValWrap(WIN, move)
-
-
-        # Otherwise, proceed with maximum value depending on turn
-        heus = []
-        for p in moves:
-            s = game.child(p,game.current)
-            a = max(a, ab_min(game, move, player, depth-1, heu, a, b))
-            if a.val >= b.val: return b
-        return a
-    
-def ab_min(game: Gamestate, move: Action, player: PlayerColor, 
-                depth: int, heu, a: ValWrap, b: ValWrap) -> ValWrap:
-    WIN = 10000
-    LOSS = -WIN
-
-    # Cutoff state
-    if depth == 0:
-        # Bottom reached
-        return ValWrap(heu(game, player), move)
-    else: 
-        # Find next level of the tree of possible states
-        moves = possible_moves(game.board, game.current)
-        # If no moves remaining, reflect this WIN or LOSS condition from player perspective
-        if len(moves) == 0:
-            if game.current == player: return ValWrap(LOSS, move)
-            else: return ValWrap(WIN, move)
-
-
-        # Otherwise, proceed with minimum value depending on turn
-        heus = []
-        for p in moves:
-            s = game.child(p,game.current)
-            b =  min(b, ab_max(game, move, player, depth-1, heu, a, b))
-            if a.val >= b.val: return a
-        return b

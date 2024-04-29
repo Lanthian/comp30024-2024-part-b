@@ -38,3 +38,9 @@ Some minor testing with new minimax implementation is needed, however too ineffi
 * Look into fixing structure to be faster, or only compute once number of possible moves is below some threshold (to
   minimise branching - an idea expressed by Anthony in Part A).
 * Curious if a MCTS implementation can be done easily or not - might be the next thing to try
+
+
+# 2024.04.30
+* Alpha-Beta pruning minimax implemented - faster than default minimax for sure, but still struggles to function at 
+  shallow turn counts with even weak depths (2 & 3). Need to write better heuristics to test it more.
+* New ValWrap dataclass should be handy for storing moves and gamestates in different data structures.
