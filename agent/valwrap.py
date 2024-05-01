@@ -1,4 +1,3 @@
-from __future__ import annotations
 """valwrap.py: Provides a dataclass to wrap other datatypes with some numeric,
 comparable value. Can be implemented stand alone from other files in module."""
 
@@ -17,14 +16,14 @@ from numbers import Number
 class ValWrap():
     """
     Storage of any datatype `item` alongside an int value `val` such that said 
-    datatype can be compared and sorted. Item may be None. 
+    datatype can be compWared and sorted. Item may be None. 
     """
     val: Number
     item: ...
 
-    def __eq__(self, other: ValWrap):
+    def __eq__(self, other: 'ValWrap'):
         return self.val == other.val
     
-    def __lt__(self, other: ValWrap):
+    def __lt__(self, other: 'ValWrap'):
         return self.val < other.val
     

@@ -7,9 +7,10 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 # COMP30024 Artificial Intelligence, Semester 1 2024
 # Project Part B: Single Player Tetress
 
-from referee.game import Coord, PlaceAction, PlayerColor, BOARD_N
+from random import randint, choice
+
+from referee.game import Coord, Direction, PlaceAction, PlayerColor, BOARD_N
 from .tetrominoes import tetrominoes_plus
-import random
 
 def is_I_shape(action: PlaceAction) -> bool:
     """ Check if the given PlaceAction corresponds to an 'I' shape. """
@@ -17,58 +18,56 @@ def is_I_shape(action: PlaceAction) -> bool:
     y_vals = [coord.r for coord in action.coords]
     return len(set(x_vals)) == 1 or len(set(y_vals)) == 1
 
-def is_adjacent(coord, board_keys):
-    """ Check if the coordinate has at least two adjacent sides touching the existing blocks on a toroidal board. """
+def is_adjacent(coord: Coord, board_keys: list[Coord]) -> bool:
+    """ Check if the coordinate has at least two adjacent sides touching the 
+    existing blocks on a toroidal board. """
     adjacent_count = 0
     # Check four possible adjacent positions: up, down, left, right
-    # Adjust for toroidal wrap-around using modulo board_size
-    directions = [
-        (-1, 0),  # Up
-        (1, 0),   # Down
-        (0, -1),  # Left
-        (0, 1)    # Right
-    ]
-    x_val = coord.c
-    y_val = coord.r
-    for dx, dy in directions:
-        adjacent_coord = ((y_val + dy) % BOARD_N, (x_val + dx) % BOARD_N)
-        #print(adjacent_coord)
+    # Inbuilt adjustment for toroidal wrap-around via Coord class.
+    for dir in [d.value for d in Direction]:
+        adjacent_coord = Coord.__add__(coord, dir)
         if adjacent_coord in board_keys:
             adjacent_count += 1
-    #print(adjacent_count)
+
     return adjacent_count >= 2
+
 
 def first_move(board: dict):
     """
-    Takes a game `board` and returns a random PlaceAction on the board depending on whether its first move or second move (any colour can start)
+    Takes a game `board` and returns a random PlaceAction on the board depending 
+    on whether its first move or second move (any colour can start)
     """
+    possible_actions = []
+    # If board is empty, location of placed tile place is arbitrary
+    # - infinite edges means no strategic benefit of location
     if len(board) == 0:
-        random_coord = Coord(random.randint(0, BOARD_N - 1), random.randint(0, BOARD_N - 1))
-        possible_actions = tetrominoes_plus(random_coord, set(board.keys())) # empty board, arbitrary location as there are infinite edges meaning no strategic benefit of location
-        non_I_actions = [action for action in possible_actions if not is_I_shape(action)] #  shape is not straight to limit risk in one axes
-        return random.choice(non_I_actions)
+        random_coord = Coord(randint(0, BOARD_N - 1), randint(0, BOARD_N - 1))
+        possible_actions = tetrominoes_plus(random_coord, set(board.keys())) 
+    
     else:
         occupied_coords = list(board.keys())
-        possible_actions = tetrominoes_plus(random.choice(occupied_coords), set(board.keys()))
-        non_I_actions = [action for action in possible_actions if not is_I_shape(action)] #  shape is not straight to limit risk in one axes
-        return random.choice(non_I_actions)
-        """"
-        board_keys = set(board.keys())
-        print(board_keys)
-        possible_actions = []
-        for coord in board_keys:
-            actions = tetrominoes_plus(coord, set(board.keys()))  # Assume this returns a list of PlaceAction
-            possible_actions.extend(actions)  # Use extend to flatten the list into possible_actions
+        possible_actions = tetrominoes_plus(choice(occupied_coords), 
+                                            set(board.keys()))
 
-        valid_actions = [action for action in possible_actions if sum(is_adjacent(coord, board_keys) for coord in action.coords) >= 1]
-        print(board_keys)
-        return random.choice(valid_actions) 
-        """
-        
-    
+    # Filter out I piece placements to limit risk in one axes
+    non_I_actions = [a for a in possible_actions if not is_I_shape(a)]
+    return choice(non_I_actions)
 
-    
-    
+    """"
+    board_keys = set(board.keys())
+    print(board_keys)
+    possible_actions = []
+    for coord in board_keys:
+        actions = tetrominoes_plus(coord, set(board.keys()))  # Assume this returns a list of PlaceAction
+        possible_actions.extend(actions)  # Use extend to flatten the list into possible_actions
+
+    valid_actions = [action for action in possible_actions if sum(is_adjacent(coord, board_keys) for coord in action.coords) >= 1]
+    print(board_keys)
+    return random.choice(valid_actions) 
+    """
+
+
+
 def possible_moves(board: dict[Coord, PlayerColor], 
                    player: PlayerColor) -> list[PlaceAction]:
     """

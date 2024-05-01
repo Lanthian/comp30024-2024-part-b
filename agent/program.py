@@ -1,4 +1,3 @@
-from __future__ import annotations
 """program.py: Supplies an `Agent` class to play Tetress in competition with 
 another agent. Managed by the referee module."""
 
@@ -56,14 +55,14 @@ class Gamestate:
         self.current = color.opponent
         self.turn += 1
 
-    def copy(self) -> Gamestate:
+    def copy(self) -> 'Gamestate':
         new = Gamestate()
         new.board = self.board.copy()
         new.current = self.current
         new.counts = self.counts.copy()
         return new
 
-    def child(self, action: Action, color: PlayerColor) -> Gamestate:
+    def child(self, action: Action, color: PlayerColor) -> 'Gamestate':
         new = self.copy()
         new.move(action, color)
         return new

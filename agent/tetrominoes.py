@@ -2,7 +2,7 @@
 based on the dataclasses present in core.py"""
 
 __author__ = "Liam Anthian, and Anthony Hill"
-__credits__ = ["Liam Anthian", "Anthony Hill"] 
+__credits__ = ["Liam Anthian", "Anthony Hill"]
 
 # COMP30024 Artificial Intelligence, Semester 1 2024
 # Project Part B: Single Player Tetress
@@ -33,7 +33,7 @@ def tetrominoes(
     if c in tiles: return t
 
     in_progress = [[c]]
-    seen = []               
+    seen = []
     # Work through a queue of semi-assembled tetrominoes to build whole set
     while len(in_progress) > 0:
         curr = in_progress.pop(0)
