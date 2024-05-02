@@ -141,6 +141,7 @@ class Agent:
               f"{", ".join([str(x) for x in action.coords])}")
 
 
+
 def h1(game: Gamestate, color: PlayerColor) -> int:
     """Returns the integer token count difference between opponent and player 
     `color` in a Gamestate `game`. A larger number is better for player.
@@ -274,5 +275,95 @@ def sub_ab(max_flag: bool, game: Gamestate, move: Action, player: PlayerColor,
         # Return a / b if no turnover
         if max_flag: return a
         else: return b
+
+"""
+
+# def mcts(game: Gamestate, heu) -> Action:
+#     # -- from the lecture notes --
+#     #selection: select way through tree until leaf node is found
+#     #expansion: add singular new child from above leaf node
+#     #simulation: from newly added node playout to terminal state 
+#     #               (don't add played out moves to search tree)
+#     #backpropagation: utilise terminal state outcome to update states from node
+#     #                   to root.
+
+#     # useful demo: https://gist.github.com/qpwo/c538c6f73727e254fdc7fab81024f6e1
+#     # by Luke Harold Miles (qpwo) - https://gist.github.com/qpwo
+#     tree = dict()
+
+
+#     for i in range(10):
+
+#         # for move in possible_moves(self.game.board, self.color):
+
+#         child_tree = dict()
+    
+
+class Node():
+    parent: 'Node' | None
+    children: set['Node']
+
+    game: Gamestate
+    playouts: int = 0
+    wins: int = 0
+
+    def __init__(self, game: Gamestate, parent: 'Node' | None = None):
+        self.parent = parent
+        self.game = game
+
+
+class MCTS():
+    player: PlayerColor
+
+    state_occurences = dict()
+    state_wins = dict()
+    tree: Node
+
+    def __init__(self, base: Gamestate):
+        self.tree = Node(base)
+
+        self.state_occurences[base] = 0
+        self.state_wins[base] = 0
+
+
+    def select(self) -> Node:
+        # select from self.tree somehow
+
+    def expand(self):
+
+
+    def playout(self, game: Gamestate):
+        # Check if terminal state reached
+        if game.turn == TURN_CAP:
+            # Calculate winner by tile count here - bound between [-1,1]
+            return min(max(h1(game, self.player),-1),1)
+        
+        p = possible_moves(game.board, game.current)
+        if len(p) == 0:
+            # If no moves left on players turn, loss. 
+            if game.current == self.player: return -1
+            # If no moves left on rivals turn, win.
+            else: return 1
+
+        # Terminal not reached - choose a successor somehow
+        move = p[0]
+        self.playout(game.child(move, game.current))
+
+
+    def backpropagate(self, result, state: Node | None):
+        if state == None:
+            # Reached the top, no further backpropagation needed
+
+        self.backpropagate(self, result, state.parent)
+
+
+    def train(self, condition):
+        while condition:
+            leaf = self.select()
+            child = self.expand(leaf)
+            result = self.playout(child)
+            self.backpropagate(result, child)
+
+"""
 
 # python -m referee agent agent         todo/temp
