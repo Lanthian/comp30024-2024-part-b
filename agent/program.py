@@ -10,6 +10,7 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 
 # === Imports ===
 from math import inf
+from random import choice
 
 from referee.game import Action, Coord, PlaceAction, PlayerColor, Direction
 
@@ -35,13 +36,19 @@ class Gamestate:
     to reduce calculation time.
     """
     # Board represented as a sparse dictionary to save space
-    board: dict[Coord, PlayerColor] = {} 
-    current: PlayerColor = PlayerColor.RED      # Red starts
-    turn: int = 1                               # First turn is turn 1
+    board: dict[Coord, PlayerColor] 
+    current: PlayerColor
+    turn: int                        
 
     # Below count done as to minimise recalculation of dictionary elements
-    counts: dict[PlayerColor, int] = {PlayerColor.RED: 0, PlayerColor.BLUE: 0}
+    counts: dict[PlayerColor, int]
 
+    def __init__(self):
+        """Constructor method for instantiating and preparing a new Gamestate"""
+        self.board = {}
+        self.current = PlayerColor.RED                  # Red starts
+        self.turn = 1                                   # First turn is turn 1
+        self.counts = {PlayerColor.RED: 0, PlayerColor.BLUE: 0}
 
     def move(self, action: Action, color: PlayerColor):
         make_place(self.board, action, color)
@@ -113,7 +120,8 @@ class Agent:
         else:
             # Intelligently select next move
             # return minimax(self.game,1,h1)     # todo - too inefficient to run
-            return ab(self.game, self.color, 2, h3)
+            # return ab(self.game, self.color, 2, h3)
+            return mcts(self.game)
 
             # # Generate all possible next moves, greedy pick based on heuristic
             # pd = PriorityDict()
@@ -278,36 +286,14 @@ def sub_ab(max_flag: bool, game: Gamestate, move: Action, player: PlayerColor,
         else: return b
 
 
-
-# def mcts(game: Gamestate, heu) -> Action:
-#     # -- from the lecture notes --
-#     #selection: select way through tree until leaf node is found
-#     #expansion: add singular new child from above leaf node
-#     #simulation: from newly added node playout to terminal state 
-#     #               (don't add played out moves to search tree)
-#     #backpropagation: utilise terminal state outcome to update states from node
-#     #                   to root.
-
-#     # useful demo: https://gist.github.com/qpwo/c538c6f73727e254fdc7fab81024f6e1
-#     # by Luke Harold Miles (qpwo) - https://gist.github.com/qpwo
-#     tree = dict()
-
-
-#     for i in range(10):
-
-#         # for move in possible_moves(self.game.board, self.color):
-
-#         child_tree = dict()
-    
+# python -m referee agent agent         todo/temp
+# === MCTS WIP HERE === - todo / temp
 
 class Node():
     parent: Node | None
-    children: set['Node'] = set()
 
     game: Gamestate
     move: PlaceAction
-    playouts: int = 0
-    wins: int = 0
 
     def __init__(self, game: Gamestate, move: PlaceAction | None = None, 
                  parent: Node | None = None):
@@ -315,42 +301,78 @@ class Node():
         self.move = move
         self.game = game
 
+    def all_children(self) -> set['Node']:
+        clr = self.game.current
+        # Add all children states to node
+        return set([Node(self.game.child(move, clr), move, self) 
+                for move in possible_moves(self.game.board, clr)])
+    
+    def item(self) -> PlaceAction:
+        return self.move
+
 
 class MCTS():
-    player: PlayerColor
+    # -- summarised from the lecture notes --
+    #selection: select way through tree until leaf node is found
+    #expansion: add singular new child from above leaf node
+    #simulation: from newly added node playout to terminal state 
+    #               (don't add played out moves to search tree)
+    #backpropagation: utilise terminal state outcome to update states from node
+    #                   to root.
 
-    occurences: dict[Gamestate: int] = {}
-    wins: dict[Gamestate: int] = {}
-    tree: Node
+    """Work In Progress:
+    A class defined to act as the interface / brains of a Monte Carlo Tree 
+    Search algorithm, storing state occurence frequency and win rate for each 
+    explored state.
+    
+    Heavily inspired by the code supplied by Luke Harold Miles (qpwo) found
+    here: https://gist.github.com/qpwo/c538c6f73727e254fdc7fab81024f6e1."""
+    occurences: dict[Node: int]
+    wins: dict[Node: int]
+    children: dict[Node: set[Node]]
+    root: Node
 
     def __init__(self, base: Gamestate):
-        self.tree = Node(base)
+        # todo - abstract this code away from Gamestate
+        self.root = Node(base)
 
-        self.occurences[base] = 0
-        self.wins[base] = 0
+        self.occurences = {}
+        self.wins = {}
+        self.children = {}
+        # Immediately queue up next possible children
+        self.expand(self.root)
 
 
-    def select(self) -> Node:
-        # todo!
-        # select from self.tree somehow - UCB1 perhaps
-        n = self.tree
-        # while True:
-        #     if len(n.children) == 0:
-        
-        return None
+    def select(self, state: Node) -> Node:        
+        prev = state
+        # Linearly (in relation to tree depth) walk through states until 
+        # unexplored or end state found
+        while True:
+            # Check for new unexplored state
+            if state not in self.children: return prev
+            # And check for terminal state (no following children)
+            elif len(self.children[state]) == 0: return prev
+            
+            # Check if there exists an unexpanded child of current state
+            for child in self.children[state]:
+                if child not in self.children:
+                    return child
+            
+            # Otherwise step down a level
+            prev = state
+            state = self.step_down(state)
 
     def expand(self, state: Node):
         # Skip state if already expanded
-        if len(state.children) > 0:
-            return
-        
-        clr = state.game.current
-        # Add all children states to node
-        for move in possible_moves(state.game.board, clr):
-            child = Node(state.game.child(move, clr), move, state)
-            state.children.add(child)
+        if state in self.children: return
 
-    def simulate(self, game: Gamestate):
+        # Otherwise enqueue children to MCTS and prepare count dictionaries
+        self.children[state] = state.all_children()
+        self.occurences[state] = 0
+        self.wins[state] = 0
+
+    def simulate(self, game: Gamestate) -> int:
+        # todo - abstract this code away from Gamestate
         # Check if terminal state reached (turn count or no remaining moves)
         if game.turn == TURN_CAP:
             # Calculate winner by tile count here - bound between [-1,1]
@@ -361,30 +383,58 @@ class MCTS():
         if len(p) == 0:
             return 0
 
-        # Terminal not reached - choose a successor somehow
-        move = p[0]
-        self.simulate(game.child(move, game.current))
+        # Terminal not reached - choose a random successor somehow
+        move = p[0] # todo - temp
+
+        return self.simulate(game.child(move, game.current))
 
     def backpropagate(self, result: int, state: Node | None):
-        # Check if at the top (no further backpropagation needed)
-        if state == None:
+        # Check if at the top (no further backpropagation needed + skip root)
+        if state.parent == None:
             return
         
         # Update state/node success
         self.occurences[state] += 1
         self.wins[state] += result
         
-        self.backpropagate(self, 1-result, state.parent)
+        self.backpropagate(1-result, state.parent)
 
 
-    def train(self, condition):
-        # Condition may be time > x or something, taken from **referee
-        while condition:
-            leaf = self.select()
-            self.expand(leaf)
-            result = self.simulate(leaf)
-            self.backpropagate(result, leaf)
+    def step_down(self, state: Node) -> Node:
+        # As of current, pop first child from set. todo /wip to include
+        # occurences & wins
+        return state.all_children().pop()
 
 
+    def train(self):
+        leaf = self.select(self.root)
+        self.expand(leaf)
+        result = self.simulate(leaf.game)
+        self.backpropagate(result, leaf)
+
+    def return_move(self) -> Action | None:
+        # Training done - return most commonly explored node
+        best = None
+        n = 0
+        
+        for node, rate in self.occurences.items():
+            if rate > n:
+                n = rate
+                best = node
+
+        # Failsafe in case 0 training has been done (return None)
+        if best == None: return None
+        # Otherwise return best move    
+        return best.item()
+
+
+def mcts(game: Gamestate) -> Action:
+    # look into storing mcts constructed between moves, so that it gets smarter 
+    # and deeper the longer the game goes on - todo
+    model = MCTS(game)
+    for _ in range(10):
+        model.train()
+    return model.return_move()
+    
 
 # python -m referee agent agent         todo/temp
