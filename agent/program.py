@@ -1,3 +1,4 @@
+from __future__ import annotations
 """program.py: Supplies an `Agent` class to play Tetress in competition with 
 another agent. Managed by the referee module."""
 
@@ -276,7 +277,7 @@ def sub_ab(max_flag: bool, game: Gamestate, move: Action, player: PlayerColor,
         if max_flag: return a
         else: return b
 
-"""
+
 
 # def mcts(game: Gamestate, heu) -> Action:
 #     # -- from the lecture notes --
@@ -300,70 +301,90 @@ def sub_ab(max_flag: bool, game: Gamestate, move: Action, player: PlayerColor,
     
 
 class Node():
-    parent: 'Node' | None
-    children: set['Node']
+    parent: Node | None
+    children: set['Node'] = set()
 
     game: Gamestate
+    move: PlaceAction
     playouts: int = 0
     wins: int = 0
 
-    def __init__(self, game: Gamestate, parent: 'Node' | None = None):
+    def __init__(self, game: Gamestate, move: PlaceAction | None = None, 
+                 parent: Node | None = None):
         self.parent = parent
+        self.move = move
         self.game = game
 
 
 class MCTS():
     player: PlayerColor
 
-    state_occurences = dict()
-    state_wins = dict()
+    occurences: dict[Gamestate: int] = {}
+    wins: dict[Gamestate: int] = {}
     tree: Node
 
     def __init__(self, base: Gamestate):
         self.tree = Node(base)
 
-        self.state_occurences[base] = 0
-        self.state_wins[base] = 0
+        self.occurences[base] = 0
+        self.wins[base] = 0
 
 
     def select(self) -> Node:
-        # select from self.tree somehow
+        # todo!
+        # select from self.tree somehow - UCB1 perhaps
+        n = self.tree
+        # while True:
+        #     if len(n.children) == 0:
+        
+        return None
 
-    def expand(self):
+    def expand(self, state: Node):
+        # Skip state if already expanded
+        if len(state.children) > 0:
+            return
+        
+        clr = state.game.current
+        # Add all children states to node
+        for move in possible_moves(state.game.board, clr):
+            child = Node(state.game.child(move, clr), move, state)
+            state.children.add(child)
 
-
-    def playout(self, game: Gamestate):
-        # Check if terminal state reached
+    def simulate(self, game: Gamestate):
+        # Check if terminal state reached (turn count or no remaining moves)
         if game.turn == TURN_CAP:
             # Calculate winner by tile count here - bound between [-1,1]
-            return min(max(h1(game, self.player),-1),1)
+            return min(max(h1(game, game.current),-1),1)
         
         p = possible_moves(game.board, game.current)
+        # Loss if no moves left
         if len(p) == 0:
-            # If no moves left on players turn, loss. 
-            if game.current == self.player: return -1
-            # If no moves left on rivals turn, win.
-            else: return 1
+            return 0
 
         # Terminal not reached - choose a successor somehow
         move = p[0]
-        self.playout(game.child(move, game.current))
+        self.simulate(game.child(move, game.current))
 
-
-    def backpropagate(self, result, state: Node | None):
+    def backpropagate(self, result: int, state: Node | None):
+        # Check if at the top (no further backpropagation needed)
         if state == None:
-            # Reached the top, no further backpropagation needed
-
-        self.backpropagate(self, result, state.parent)
+            return
+        
+        # Update state/node success
+        self.occurences[state] += 1
+        self.wins[state] += result
+        
+        self.backpropagate(self, 1-result, state.parent)
 
 
     def train(self, condition):
+        # Condition may be time > x or something, taken from **referee
         while condition:
             leaf = self.select()
-            child = self.expand(leaf)
-            result = self.playout(child)
-            self.backpropagate(result, child)
+            self.expand(leaf)
+            result = self.simulate(leaf)
+            self.backpropagate(result, leaf)
 
-"""
+
 
 # python -m referee agent agent         todo/temp
