@@ -44,3 +44,9 @@ Some minor testing with new minimax implementation is needed, however too ineffi
 * Alpha-Beta pruning minimax implemented - faster than default minimax for sure, but still struggles to function at 
   shallow turn counts with even weak depths (2 & 3). Need to write better heuristics to test it more.
 * New ValWrap dataclass should be handy for storing moves and gamestates in different data structures.
+
+
+# 2024.05.04
+Issue with UCB1 seems to be a keyerror using MCTS.N[node], which makes me think that nodes are being regenerated in 
+places and hashing different in the dictionary as a result. Removing this duplication of generation in all_children() 
+method of a Node seems ot have fixed the problem.

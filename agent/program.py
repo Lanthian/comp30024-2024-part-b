@@ -291,6 +291,7 @@ def sub_ab(max_flag: bool, game: Gamestate, move: Action, player: PlayerColor,
 
 class Node():
     parent: Node | None
+    sub: set['Node'] | None                 # Avoid regenerating children
 
     game: Gamestate
     move: PlaceAction
@@ -298,14 +299,19 @@ class Node():
     def __init__(self, game: Gamestate, move: PlaceAction | None = None, 
                  parent: Node | None = None):
         self.parent = parent
+        self.sub = None
         self.move = move
         self.game = game
 
     def all_children(self) -> set['Node']:
-        clr = self.game.current
-        # Add all children states to node
-        return set([Node(self.game.child(move, clr), move, self) 
-                for move in possible_moves(self.game.board, clr)])
+        # Only generate children if not yet done so
+        if self.sub == None:
+            clr = self.game.current
+            # Add all children states to node
+            self.sub = set([Node(self.game.child(move, clr), move, self) 
+                            for move in possible_moves(self.game.board, clr)])
+        
+        return self.sub
     
     def item(self) -> PlaceAction:
         return self.move
@@ -348,14 +354,13 @@ class MCTS():
 
 
     def select(self, state: Node) -> Node:        
-        prev = state
         # Linearly (in relation to tree depth) walk through states until 
         # unexplored or end state found
         while True:
             # Check for new unexplored state
-            if state not in self.children: return prev
+            if state not in self.children: return state
             # And check for terminal state (no following children)
-            elif len(self.children[state]) == 0: return prev
+            elif len(self.children[state]) == 0: return state
             
             # Check if there exists an unexpanded child of current state
             for child in self.children[state]:
@@ -363,7 +368,6 @@ class MCTS():
                     return child
             
             # Otherwise step down a level
-            prev = state
             state = self.step_down(state)
 
     def expand(self, state: Node):
@@ -407,17 +411,14 @@ class MCTS():
 
 
     def step_down(self, state: Node) -> Node:
-        print("Step_down called...........")
         """Finds all children nodes from node `state` and returns the max node
         according to UCB1 algorithm with MCTS' `ucb1_c` constant. `state` must 
         NOT be a terminal node of tree (assert len(state.all_children()) > 0)"""
-        return state.all_children().pop()
         # Value wrap with UCB1 value and list all children nodes
         l = [ValWrap(self.UCB1(child), child) for child in state.all_children()]
         return max(l).item
                 
     def UCB1(self, node: Node) -> float | None:
-        # todo - bugs here still...
         # Ensure root node is not used here
         if node.parent == None: return None
 
@@ -434,13 +435,13 @@ class MCTS():
         result = self.simulate(leaf.game)
         self.backpropagate(result, leaf)
 
-    def return_move(self) -> Action | None:
+    def return_move(self, relative_root: Node) -> Action | None:
         # Training done - return most commonly explored node
         best = None
         n = 0
         
         # Only need to check children of root node as maximising occurence
-        for node in self.children[self.root]:
+        for node in self.children[relative_root]:
             # Skip unexplored children nodes
             if node not in self.N: continue
 
@@ -453,15 +454,25 @@ class MCTS():
         if best == None: return None
         # Otherwise return best move    
         return best.item()
+    
+    def find_node(game: Gamestate) -> Node:
+        # todo 
+        """Returns an existing node if generated & explored, otherwise generates 
+        it. Done to avoid duplicating tree spreads"""
+        # demo:
+        #   x = model.find_node(current_game)
+        #   model.return_move(x)
+
 
 
 def mcts(game: Gamestate) -> Action:
     # look into storing mcts constructed between moves, so that it gets smarter 
-    # and deeper the longer the game goes on - todo
+    # and deeper the longer the game goes on - todo via find_node and moving 
+    # MCTS() elsewhere
     model = MCTS(1, game)
     for _ in range(10):
         model.train()
-    return model.return_move()
+    return model.return_move(model.root)
     
 
 # python -m referee agent agent         todo/temp
