@@ -9,7 +9,7 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 # Project Part B: Game Playing Agent
 
 # === Imports ===
-from math import inf
+from math import inf, sqrt, log
 from random import choice
 
 from referee.game import Action, Coord, PlaceAction, PlayerColor, Direction
@@ -327,20 +327,24 @@ class MCTS():
     
     Heavily inspired by the code supplied by Luke Harold Miles (qpwo) found
     here: https://gist.github.com/qpwo/c538c6f73727e254fdc7fab81024f6e1."""
-    occurences: dict[Node: int]
-    wins: dict[Node: int]
+    N: dict[Node: int]                      # occurences
+    U: dict[Node: int]                      # utility (wins)
+    ucb1_c: float
+
     children: dict[Node: set[Node]]
     root: Node
 
-    def __init__(self, base: Gamestate):
+    def __init__(self, c: float, base: Gamestate):
         # todo - abstract this code away from Gamestate
         self.root = Node(base)
+        self.ucb1_c = c 
 
-        self.occurences = {}
-        self.wins = {}
+        self.N = {}
+        self.U = {}
         self.children = {}
-        # Immediately queue up next possible children
+        # Immediately expand 
         self.expand(self.root)
+        # todo - work here needs to be done to ensure count of plays aren't lost
 
 
     def select(self, state: Node) -> Node:        
@@ -368,8 +372,8 @@ class MCTS():
 
         # Otherwise enqueue children to MCTS and prepare count dictionaries
         self.children[state] = state.all_children()
-        self.occurences[state] = 0
-        self.wins[state] = 0
+        self.N[state] = 0
+        self.U[state] = 0
 
     def simulate(self, game: Gamestate) -> int:
         # todo - abstract this code away from Gamestate
@@ -378,32 +382,50 @@ class MCTS():
             # Calculate winner by tile count here - bound between [-1,1]
             return min(max(h1(game, game.current),-1),1)
         
+        # todo - generating all possible moves here is what's taking up so much 
+        # time when only one random move is needed
         p = possible_moves(game.board, game.current)
         # Loss if no moves left
         if len(p) == 0:
             return 0
 
         # Terminal not reached - choose a random successor somehow
-        move = p[0] # todo - temp
+        move = choice(p) # todo - temp
 
         return self.simulate(game.child(move, game.current))
 
     def backpropagate(self, result: int, state: Node | None):
-        # Check if at the top (no further backpropagation needed + skip root)
-        if state.parent == None:
+        # Check if at the top (no further backpropagation needed)
+        if state == None:
             return
         
         # Update state/node success
-        self.occurences[state] += 1
-        self.wins[state] += result
+        self.N[state] += 1
+        self.U[state] += result
         
         self.backpropagate(1-result, state.parent)
 
 
     def step_down(self, state: Node) -> Node:
-        # As of current, pop first child from set. todo /wip to include
-        # occurences & wins
+        print("Step_down called...........")
+        """Finds all children nodes from node `state` and returns the max node
+        according to UCB1 algorithm with MCTS' `ucb1_c` constant. `state` must 
+        NOT be a terminal node of tree (assert len(state.all_children()) > 0)"""
         return state.all_children().pop()
+        # Value wrap with UCB1 value and list all children nodes
+        l = [ValWrap(self.UCB1(child), child) for child in state.all_children()]
+        return max(l).item
+                
+    def UCB1(self, node: Node) -> float | None:
+        # todo - bugs here still...
+        # Ensure root node is not used here
+        if node.parent == None: return None
+
+        n = self.N[node]
+        exploit = self.U[node] / n
+        # explore = sqrt(log(self.N[node.parent], n) / n)
+        explore = sqrt(log(n) / n)
+        return exploit + self.ucb1_c * explore
 
 
     def train(self):
@@ -417,7 +439,12 @@ class MCTS():
         best = None
         n = 0
         
-        for node, rate in self.occurences.items():
+        # Only need to check children of root node as maximising occurence
+        for node in self.children[self.root]:
+            # Skip unexplored children nodes
+            if node not in self.N: continue
+
+            rate = self.N[node]
             if rate > n:
                 n = rate
                 best = node
@@ -431,7 +458,7 @@ class MCTS():
 def mcts(game: Gamestate) -> Action:
     # look into storing mcts constructed between moves, so that it gets smarter 
     # and deeper the longer the game goes on - todo
-    model = MCTS(game)
+    model = MCTS(1, game)
     for _ in range(10):
         model.train()
     return model.return_move()
