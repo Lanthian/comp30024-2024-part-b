@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from functools import total_ordering
 from numbers import Number
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 @total_ordering
 class ValWrap():
     """
@@ -26,4 +26,7 @@ class ValWrap():
     
     def __lt__(self, other: 'ValWrap'):
         return self.val < other.val
+    
+    def invert(self):
+        self.val *= -1
     

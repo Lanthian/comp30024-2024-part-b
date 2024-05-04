@@ -122,6 +122,10 @@ class Agent:
             # return minimax(self.game,1,h1)     # todo - too inefficient to run
             # return ab(self.game, self.color, 2, h3)
             return mcts(self.game)
+            # model = MCTS(1, self.game)
+            # for _ in range(10):
+            #     model.train()
+            # return model.choose_move(model.root)
 
             # # Generate all possible next moves, greedy pick based on heuristic
             # pd = PriorityDict()
@@ -303,14 +307,24 @@ class Node():
         self.move = move
         self.game = game
 
-    def all_children(self) -> set['Node']:
+    def all_children(self, monte: MCTS) -> set['Node']:
+        """Avoid ever generating move and child state again by storing in MCTS 
+        dictionary and locally in self.sub set. Does not alter parent / move of 
+        already seen gamestates in MCTS."""
         # Only generate children if not yet done so
         if self.sub == None:
+            self.sub = set()
+
             clr = self.game.current
             # Add all children states to node
-            self.sub = set([Node(self.game.child(move, clr), move, self) 
-                            for move in possible_moves(self.game.board, clr)])
-        
+            for move in possible_moves(self.game.board, clr):
+                sub_game = self.game.child(move, clr)
+                # Don't store in mcts if already existant
+                if sub_game not in monte.seen:
+                    s = Node(sub_game, move, self)
+                    monte.register(s)
+                self.sub.add(monte.seen[sub_game])
+            
         return self.sub
     
     def item(self) -> PlaceAction:
@@ -338,6 +352,7 @@ class MCTS():
     ucb1_c: float
 
     children: dict[Node: set[Node]]
+    seen: dict[Gamestate: Node]     # Gamestate dictionary to search for nodes
     root: Node
 
     def __init__(self, c: float, base: Gamestate):
@@ -348,6 +363,7 @@ class MCTS():
         self.N = {}
         self.U = {}
         self.children = {}
+        self.seen = {}
         # Immediately expand 
         self.expand(self.root)
         # todo - work here needs to be done to ensure count of plays aren't lost
@@ -374,29 +390,38 @@ class MCTS():
         # Skip state if already expanded
         if state in self.children: return
 
-        # Otherwise enqueue children to MCTS and prepare count dictionaries
-        self.children[state] = state.all_children()
-        self.N[state] = 0
-        self.U[state] = 0
+        # Add to seen dictionary if first sighting
+        if state.game not in self.seen:
+            self.register(state)
 
-    def simulate(self, game: Gamestate) -> int:
+        # Otherwise enqueue children to MCTS and prepare count dictionaries
+        self.children[state] = state.all_children(self)
+
+    def simulate(self, node: Node) -> ValWrap:
+        """Returns a terminal node value wrapped by termination condition:
+        1 if win, -1 if loss, 0 if draw."""
         # todo - abstract this code away from Gamestate
         # Check if terminal state reached (turn count or no remaining moves)
-        if game.turn == TURN_CAP:
+        if node.game.turn == TURN_CAP:
             # Calculate winner by tile count here - bound between [-1,1]
-            return min(max(h1(game, game.current),-1),1)
+            scoring = min(max(h1(node.game, node.game.current),-1),1)
+            return ValWrap(scoring, node)
         
-        # todo - generating all possible moves here is what's taking up so much 
-        # time when only one random move is needed
-        p = possible_moves(game.board, game.current)
+        
+        # Generate or access already generated children
+        p = node.all_children(self)
         # Loss if no moves left
         if len(p) == 0:
-            return 0
+            return ValWrap(-1, node)
 
         # Terminal not reached - choose a random successor somehow
-        move = choice(p) # todo - temp
+        # Tuple used to convert set into iterable (for `choice` here)
+        rdm_child = choice(tuple(p)) # todo - temp
 
-        return self.simulate(game.child(move, game.current))
+        # Inverse score for recursively deeper child state
+        x = self.simulate(rdm_child)
+        x.invert()
+        return x
 
     def backpropagate(self, result: int, state: Node | None):
         # Check if at the top (no further backpropagation needed)
@@ -413,9 +438,13 @@ class MCTS():
     def step_down(self, state: Node) -> Node:
         """Finds all children nodes from node `state` and returns the max node
         according to UCB1 algorithm with MCTS' `ucb1_c` constant. `state` must 
-        NOT be a terminal node of tree (assert len(state.all_children()) > 0)"""
+        NOT be a terminal node of tree (assert len(state.all_children(self)) > 0)"""
         # Value wrap with UCB1 value and list all children nodes
-        l = [ValWrap(self.UCB1(child), child) for child in state.all_children()]
+        l = [ValWrap(self.UCB1(child), child) for child in state.all_children(self)]
+        # todo - temp
+        print([i.val for i in l])
+        print([f"{self.N[x]}-{self.U[x]}" for x in state.all_children(self)])
+        print("--")
         return max(l).item
                 
     def UCB1(self, node: Node) -> float | None:
@@ -432,10 +461,17 @@ class MCTS():
     def train(self):
         leaf = self.select(self.root)
         self.expand(leaf)
-        result = self.simulate(leaf.game)
-        self.backpropagate(result, leaf)
+        result = self.simulate(leaf)
+        
+        # Handle win, loss, draw differently; currently treat a tie as a win
+        match result.val:
+            case -1: v = 0
+            case 1: v = 1
+            case 0: v = 1
+        self.backpropagate(v, result.item)
 
-    def return_move(self, relative_root: Node) -> Action | None:
+
+    def choose_move(self, relative_root: Node) -> Action | None:
         # Training done - return most commonly explored node
         best = None
         n = 0
@@ -455,14 +491,24 @@ class MCTS():
         # Otherwise return best move    
         return best.item()
     
-    def find_node(game: Gamestate) -> Node:
-        # todo 
+    def find_node(self, game: Gamestate) -> Node:
         """Returns an existing node if generated & explored, otherwise generates 
-        it. Done to avoid duplicating tree spreads"""
-        # demo:
-        #   x = model.find_node(current_game)
-        #   model.return_move(x)
+        and returns it as a new root. Done to avoid duplicating tree spreads."""
+        if game not in self.seen:
+            self.register(Node(game))
+        return self.seen[game]
+    
+    def register(self, node: Node):
+        # Only call on nodes not already seen
+        self.seen[node.game] = node
+        self.N[node] = 0
+        self.U[node] = 0
 
+    # def new_root(self, game: Gamestate):
+    #     # Update root with new gamestate (turns have passed since last call)
+    #     self.root = self.find_node(game)
+    #     self.children.clear()
+    #     self.expand(self.root)
 
 
 def mcts(game: Gamestate) -> Action:
@@ -472,7 +518,7 @@ def mcts(game: Gamestate) -> Action:
     model = MCTS(1, game)
     for _ in range(10):
         model.train()
-    return model.return_move(model.root)
+    return model.choose_move(model.root)
     
 
-# python -m referee agent agent         todo/temp
+# python -m referee agent agent         t   odo/temp
