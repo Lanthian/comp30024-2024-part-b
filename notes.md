@@ -50,3 +50,19 @@ Some minor testing with new minimax implementation is needed, however too ineffi
 Issue with UCB1 seems to be a keyerror using MCTS.N[node], which makes me think that nodes are being regenerated in 
 places and hashing different in the dictionary as a result. Removing this duplication of generation in all_children() 
 method of a Node seems ot have fixed the problem.
+
+# 2024.05.05
+* I've spent too much timing messing around with MCTS as it is - rather than beating my head against a brick wall, a new 
+  approach would be good. We should try to have it so the tree can be trained from any node, and next move requested 
+  from any node.
+* Problem mostly solved (experimental branch - divide by zero error is not terrific...) however it's absolutely 
+  horrendous for memory.
+
+### Progress update (LA)
+A quick update of where we’re at (I think); I’ve been messing around with mcts and it’s pretty terrible early game, and 
+can be really really memory intensive. If we were to use it we should train up a prestored dictionary of planned moves 
+for different scenarios early game, or use a-B search and then segue into mcts once mid game or late game.
+It’s also reached the point where fiddling with it / improving it further is too time intensive for me for the time we 
+have left, so I’m going to instead get on with starting the report and polishing a-B for submission. If you’d like to 
+give MCTS a crack I more than welcome it, or if you want to direct efforts elsewhere that’s also fine. I like the idea 
+of monte carlo but just struggling a bit too much with the limited time I have in the coming week to complete it.
