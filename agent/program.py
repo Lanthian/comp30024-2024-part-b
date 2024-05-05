@@ -92,6 +92,7 @@ class Agent:
         
         self.color = color
         self.game = Gamestate()
+        self.model = MCTS(1, self.game)
 
     def action(self, **referee: dict) -> Action:
         """
@@ -121,11 +122,30 @@ class Agent:
             # Intelligently select next move
             # return minimax(self.game,1,h1)     # todo - too inefficient to run
             # return ab(self.game, self.color, 2, h3)
-            return mcts(self.game)
-            # model = MCTS(1, self.game)
-            # for _ in range(10):
-            #     model.train()
-            # return model.choose_move(model.root)
+            # return mcts(self.game)
+            # self.model = MCTS(1, self.game)
+            
+            # print("=================================")
+            # print(self.model.root.game)
+            # print(self.model.root.move)
+            # print(self.model.root.parent)
+            # print(self.model.root.sub)
+
+            self.model.new_root(self.game)
+            # print(self.game in self.model.seen)
+            # print(self.model.find_node(self.game))
+            # self.model.diagnose()
+            # print(self.model.children[self.model.root])
+            # game move parent sub
+            # print("=================================")
+            # print(self.model.root.game)
+            # print(self.model.root.move)
+            # print(self.model.root.parent)
+            # print(self.model.root.sub)
+            print(len(self.model.seen))
+            for _ in range(10):
+                self.model.train()
+            return self.model.choose_move(self.model.root)
 
             # # Generate all possible next moves, greedy pick based on heuristic
             # pd = PriorityDict()
@@ -311,19 +331,20 @@ class Node():
         """Avoid ever generating move and child state again by storing in MCTS 
         dictionary and locally in self.sub set. Does not alter parent / move of 
         already seen gamestates in MCTS."""
-        # Only generate children if not yet done so
-        if self.sub == None:
-            self.sub = set()
-
-            clr = self.game.current
-            # Add all children states to node
-            for move in possible_moves(self.game.board, clr):
-                sub_game = self.game.child(move, clr)
-                # Don't store in mcts if already existant
-                if sub_game not in monte.seen:
-                    s = Node(sub_game, move, self)
-                    monte.register(s)
-                self.sub.add(monte.seen[sub_game])
+        # Only generate children if not yet done 
+        # print("here's the problem")
+        # if self.sub == None:
+        self.sub = set()
+        # print("lll")
+        clr = self.game.current
+        # Add all children states to node
+        for move in possible_moves(self.game.board, clr):
+            sub_game = self.game.child(move, clr)
+            # Don't store in mcts if already existant
+            if sub_game not in monte.seen:
+                s = Node(sub_game, move, self)
+                monte.register(s)
+            self.sub.add(monte.seen[sub_game])
             
         return self.sub
     
@@ -355,16 +376,26 @@ class MCTS():
     seen: dict[Gamestate: Node]     # Gamestate dictionary to search for nodes
     root: Node
 
+    def diagnose(self):
+        print("VVVVVVVVVVVVVVVVVV")
+        print(self.N)
+        print(self.U)
+        print(len(self.children))
+        print(len(self.seen))
+        print(self.root)
+        print("^^^^^^^^^^^^^^^^^^")
+
     def __init__(self, c: float, base: Gamestate):
         # todo - abstract this code away from Gamestate
-        self.root = Node(base)
         self.ucb1_c = c 
 
         self.N = {}
         self.U = {}
         self.children = {}
         self.seen = {}
+
         # Immediately expand 
+        self.root = self.find_node(base)
         self.expand(self.root)
         # todo - work here needs to be done to ensure count of plays aren't lost
 
@@ -504,11 +535,14 @@ class MCTS():
         self.N[node] = 0
         self.U[node] = 0
 
-    # def new_root(self, game: Gamestate):
-    #     # Update root with new gamestate (turns have passed since last call)
-    #     self.root = self.find_node(game)
-    #     self.children.clear()
-    #     self.expand(self.root)
+    def new_root(self, game: Gamestate):
+        # Update root with new gamestate (turns have passed since last call)
+        self.root = self.find_node(game)
+        self.root.parent = None
+        self.children = {}
+        # self.children.clear()
+        self.expand(self.root)
+        # print(f"E -> {self.root.all_children(self)}")
 
 
 def mcts(game: Gamestate) -> Action:
