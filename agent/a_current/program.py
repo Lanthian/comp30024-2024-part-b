@@ -14,16 +14,16 @@ from random import choice
 
 from agent.control import possible_moves, first_move
 from agent.gamestate import Gamestate
+from agent.heuristics import *
 from agent.prioritydict import PriorityDict
 from agent.utils import render_board     # todo/temp
 from agent.valwrap import ValWrap
 
-from referee.game import Action, Coord, PlaceAction, PlayerColor, Direction
+from referee.game import Action, Coord, Direction, PlaceAction, PlayerColor, MAX_TURNS
 
 # === Constants ===
 WIN = 10000
 LOSS = -WIN
-TURN_CAP = 150
 
 
 class Agent:
@@ -31,7 +31,7 @@ class Agent:
     This class is the "entry point" for an agent, providing an interface to
     respond to various Tetress game events.
     """
-    first_move: bool=True
+    first_move: bool
     color: PlayerColor
 
     def __init__(self, color: PlayerColor, **referee: dict):
@@ -39,7 +39,7 @@ class Agent:
         This constructor method runs when the referee instantiates the agent.
         All setup and/or precomputation is done here.
         """
-        
+        self.first_move = True
         self.color = color
         self.game = Gamestate()
 
@@ -102,44 +102,6 @@ class Agent:
         # todo/temp - temporary printing of update call
         print(f"Testing: {color} played PLACE action: " +
               f"{", ".join([str(x) for x in action.coords])}")
-
-
-
-def h1(game: Gamestate, color: PlayerColor) -> int:
-    """Returns the integer token count difference between opponent and player 
-    `color` in a Gamestate `game`. A larger number is better for player.
-    Goal: Maximise difference in player tiles on board."""
-    return game.counts[color] - game.counts[color.opponent]
-
-def h2(game: Gamestate, color: PlayerColor) -> int:
-    """Returns the interger possible move difference between opponent and player
-    `color` in a Gamestate `game`. A larger number is better for player.
-    Goal: Maximise difference in remaining possible moves between players."""
-    # todo / temp - wayyyy too slow at the moment. Not feasible to check unless 
-    # a faster method of generating moves is found
-    a = len(possible_moves(game.board, color))
-    b = len(possible_moves(game.board, color.opponent))
-    return a - b
-
-def h3(game: Gamestate, color: PlayerColor) -> float:
-    """Returns the float neighbouring air tile difference between opponent and
-    player `color` in a Gamestate `game`. A larger number is player favoured. 
-    Balance between tiles can be altered by changing a & b values.
-    Goal: Minimise possible placement tiles opponent has (suffocate them)
-      while maximising a players own possible placement tiles."""
-    blank_nbrs = {color: set(), color.opponent: set()}
-    a = 0.1
-    b = 1
-
-    # Iterate through all tiles and their neighbours
-    for (coord, clr) in game.board.items():
-        for dir in [d.value for d in Direction]:
-            new = Coord.__add__(coord, dir)
-            # If neighbour is empty air, add one to relevant tally
-            if new not in game.board:
-                blank_nbrs[clr].add(new)
-
-    return a*len(blank_nbrs[color]) - b*len(blank_nbrs[color.opponent])
 
 
 def minimax(game: Gamestate, depth: int, heu) -> Action | None:
@@ -208,10 +170,17 @@ def sub_ab(max_flag: bool, game: Gamestate, move: Action, player: PlayerColor,
     """ab() sub-function. Maximises or minimises outcome depending on 
     alternating depth level. Equivalent to ab_max if `max_flag` is set to True, 
     ab_min if set to False. Returns a ValWrap-ed Action."""
-    # Check cutoff states
+    # -- Check cutoff states --
     if depth == 0:
         # Bottom reached
         return ValWrap(heu(game, player), move)
+    
+    if game.turn > MAX_TURNS:
+        # Last move was final turn - player with most tokens wins
+        if game.counts[game.current] > game.counts[game.current.opponent]:
+            return ValWrap(WIN, move)
+        else: return ValWrap(LOSS, move)
+
     else: 
         # Find next level of the tree of possible states
         next_moves = possible_moves(game.board, game.current)
@@ -238,6 +207,7 @@ def sub_ab(max_flag: bool, game: Gamestate, move: Action, player: PlayerColor,
         # Return a / b if no turnover
         if max_flag: return a
         else: return b
+
 
 
 # === MCTS WIP HERE === - todo / temp

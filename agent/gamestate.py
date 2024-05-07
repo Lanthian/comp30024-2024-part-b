@@ -11,6 +11,9 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 from agent.control import make_place
 from referee.game import Action, Coord, PlayerColor
 
+# === Constants ===
+TURN_CAP = 150   # 150
+
 class Gamestate:
     """
     Dataclass to represent a state of the game, storing additional information 
@@ -24,11 +27,11 @@ class Gamestate:
     # Below count done as to minimise recalculation of dictionary elements
     counts: dict[PlayerColor, int]
 
-    def __init__(self):
+    def __init__(self, color: PlayerColor = PlayerColor.RED, turn: int = 1):
         """Constructor method for instantiating and preparing a new Gamestate"""
         self.board = {}
-        self.current = PlayerColor.RED                  # Red starts
-        self.turn = 1                                   # First turn is turn 1
+        self.current = color                # Red starts by default
+        self.turn = turn                    # First turn is turn 1 by default
         self.counts = {PlayerColor.RED: 0, PlayerColor.BLUE: 0}
 
     def move(self, action: Action, color: PlayerColor):
@@ -45,9 +48,8 @@ class Gamestate:
         self.turn += 1
 
     def copy(self) -> 'Gamestate':
-        new = Gamestate()
+        new = Gamestate(self.current, self.turn)
         new.board = self.board.copy()
-        new.current = self.current
         new.counts = self.counts.copy()
         return new
 

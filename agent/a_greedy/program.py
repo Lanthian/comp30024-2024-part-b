@@ -11,13 +11,10 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 # === Imports ===
 from agent.control import first_move, possible_moves
 from agent.gamestate import Gamestate
+from agent.heuristics import *
 from agent.prioritydict import PriorityDict
-from referee.game import Action, Coord, Direction, PlayerColor
 
-# === Constants ===
-WIN = 10000
-LOSS = -WIN
-TURN_CAP = 150
+from referee.game import Action, PlayerColor
 
 
 class Agent:
@@ -25,7 +22,7 @@ class Agent:
     This class is the "entry point" for an agent, providing an interface to
     respond to various Tetress game events.
     """
-    first_move: bool=True
+    first_move: bool
     color: PlayerColor
 
     def __init__(self, color: PlayerColor, **referee: dict):
@@ -33,6 +30,7 @@ class Agent:
         This constructor method runs when the referee instantiates the agent.
         All setup and/or precomputation is done here.
         """
+        self.first_move = True
         self.color = color
         self.game = Gamestate()
 
@@ -67,40 +65,3 @@ class Agent:
         # There is only one action type, PlaceAction. 
         # Clear filled lines as necessary.
         self.game.move(action, color)
-
-
-def h1(game: Gamestate, color: PlayerColor) -> int:
-    """Returns the integer token count difference between opponent and player 
-    `color` in a Gamestate `game`. A larger number is better for player.
-    Goal: Maximise difference in player tiles on board."""
-    return game.counts[color] - game.counts[color.opponent]
-
-def h2(game: Gamestate, color: PlayerColor) -> int:
-    """Returns the interger possible move difference between opponent and player
-    `color` in a Gamestate `game`. A larger number is better for player.
-    Goal: Maximise difference in remaining possible moves between players."""
-    # todo / temp - wayyyy too slow at the moment. Not feasible to check unless 
-    # a faster method of generating moves is found
-    a = len(possible_moves(game.board, color))
-    b = len(possible_moves(game.board, color.opponent))
-    return a - b
-
-def h3(game: Gamestate, color: PlayerColor) -> float:
-    """Returns the float neighbouring air tile difference between opponent and
-    player `color` in a Gamestate `game`. A larger number is player favoured. 
-    Balance between tiles can be altered by changing a & b values.
-    Goal: Minimise possible placement tiles opponent has (suffocate them)
-      while maximising a players own possible placement tiles."""
-    blank_nbrs = {color: set(), color.opponent: set()}
-    a = 0.1
-    b = 1
-
-    # Iterate through all tiles and their neighbours
-    for (coord, clr) in game.board.items():
-        for dir in [d.value for d in Direction]:
-            new = Coord.__add__(coord, dir)
-            # If neighbour is empty air, add one to relevant tally
-            if new not in game.board:
-                blank_nbrs[clr].add(new)
-
-    return a*len(blank_nbrs[color]) - b*len(blank_nbrs[color.opponent])

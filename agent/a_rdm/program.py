@@ -21,6 +21,7 @@ class Agent:
     This class is the "entry point" for an agent, providing an interface to
     respond to various Tetress game events.
     """
+    first_move: bool
     color: PlayerColor
     
     def __init__(self, color: PlayerColor, **referee: dict):
