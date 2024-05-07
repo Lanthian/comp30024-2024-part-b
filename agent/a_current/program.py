@@ -12,23 +12,18 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 from math import inf, sqrt, log
 from random import choice
 
-from referee.game import Action, Coord, PlaceAction, PlayerColor, Direction
+from agent.prioritydict import PriorityDict
+from agent.control import possible_moves, make_place, first_move
+from agent.utils import render_board     # todo/temp
+from agent.valwrap import ValWrap
 
-from .prioritydict import PriorityDict
-from .control import possible_moves, make_place, first_move
-from .utils import render_board     # todo/temp
-from .valwrap import ValWrap
+from referee.game import Action, Coord, PlaceAction, PlayerColor, Direction
 
 # === Constants ===
 WIN = 10000
 LOSS = -WIN
 TURN_CAP = 150
 
-# === Terminal prompts ===
-# python -m referee agent agent     todo/temp
-# python -m referee agent agent_rdm
-# python -m referee agent_rdm agent
-# python -m referee agent_rdm agent_rdm
 
 class Gamestate:
     """
@@ -121,7 +116,7 @@ class Agent:
             # Intelligently select next move
             # return minimax(self.game,1,h1)     # todo - too inefficient to run
             # return ab(self.game, self.color, 2, h3)
-            return mcts(self.game)
+            return mcts(self.game, 10, 1)
             # model = MCTS(1, self.game)
             # for _ in range(10):
             #     model.train()
@@ -290,7 +285,6 @@ def sub_ab(max_flag: bool, game: Gamestate, move: Action, player: PlayerColor,
         else: return b
 
 
-# python -m referee agent agent         todo/temp
 # === MCTS WIP HERE === - todo / temp
 
 class Node():
@@ -332,14 +326,6 @@ class Node():
 
 
 class MCTS():
-    # -- summarised from the lecture notes --
-    #selection: select way through tree until leaf node is found
-    #expansion: add singular new child from above leaf node
-    #simulation: from newly added node playout to terminal state 
-    #               (don't add played out moves to search tree)
-    #backpropagation: utilise terminal state outcome to update states from node
-    #                   to root.
-
     """Work In Progress:
     A class defined to act as the interface / brains of a Monte Carlo Tree 
     Search algorithm, storing state occurence frequency and win rate for each 
@@ -367,11 +353,14 @@ class MCTS():
         # Immediately expand 
         self.expand(self.root)
         # todo - work here needs to be done to ensure count of plays aren't lost
+        #      - can do this by storing in Gamestate and not regenerating each
+        #        time a player is required.
 
 
-    def select(self, state: Node) -> Node:        
+    def select(self, state: Node) -> Node:     
+        """Step 1: Select way through tree until leaf node is found"""   
         # Linearly (in relation to tree depth) walk through states until 
-        # unexplored or end state found
+        # unexplored or end state found. 
         while True:
             # Check for new unexplored state
             if state not in self.children: return state
@@ -387,6 +376,7 @@ class MCTS():
             state = self.step_down(state)
 
     def expand(self, state: Node):
+        """Step 2: Expand - add singular new child from above leaf node"""
         # Skip state if already expanded
         if state in self.children: return
 
@@ -398,8 +388,12 @@ class MCTS():
         self.children[state] = state.all_children(self)
 
     def simulate(self, node: Node) -> ValWrap:
-        """Returns a terminal node value wrapped by termination condition:
-        1 if win, -1 if loss, 0 if draw."""
+        """Step 3: Simulate playout with newly added node to terminal state, not 
+        yet adding child nodes to playout tree.
+        
+        Returns:
+          a terminal node value wrapped by termination condition:
+          1 if win, -1 if loss, 0 if draw."""
         # todo - abstract this code away from Gamestate
         # Check if terminal state reached (turn count or no remaining moves)
         if node.game.turn == TURN_CAP:
@@ -424,6 +418,8 @@ class MCTS():
         return x
 
     def backpropagate(self, result: int, state: Node | None):
+        """Step 4: utilise terminal state outcome to update states from node
+        to root, adding newly seen nodes into playout tree."""
         # Check if at the top (no further backpropagation needed)
         if state == None:
             return
@@ -438,16 +434,21 @@ class MCTS():
     def step_down(self, state: Node) -> Node:
         """Finds all children nodes from node `state` and returns the max node
         according to UCB1 algorithm with MCTS' `ucb1_c` constant. `state` must 
-        NOT be a terminal node of tree (assert len(state.all_children(self)) > 0)"""
+        NOT be a terminal node of tree - assert the below before calling:
+            len(state.all_children(self)) > 0"""
         # Value wrap with UCB1 value and list all children nodes
         l = [ValWrap(self.UCB1(child), child) for child in state.all_children(self)]
-        # todo - temp
-        print([i.val for i in l])
-        print([f"{self.N[x]}-{self.U[x]}" for x in state.all_children(self)])
-        print("--")
+
+        # # todo - temp
+        # print([i.val for i in l])
+        # print([f"{self.N[x]}-{self.U[x]}" for x in state.all_children(self)])
+        # print("--")
+
         return max(l).item
                 
     def UCB1(self, node: Node) -> float | None:
+        """UCB1 algorithm, balanced by MCTS' `ucb1_c` constant. Returns `None`
+        if used on a tree root node, a float otherwise."""
         # Ensure root node is not used here
         if node.parent == None: return None
 
@@ -458,20 +459,26 @@ class MCTS():
         return exploit + self.ucb1_c * explore
 
 
-    def train(self):
-        leaf = self.select(self.root)
-        self.expand(leaf)
-        result = self.simulate(leaf)
-        
-        # Handle win, loss, draw differently; currently treat a tie as a win
-        match result.val:
-            case -1: v = 0
-            case 1: v = 1
-            case 0: v = 1
-        self.backpropagate(v, result.item)
+    def train(self, n: int=1):
+        """Simulate through an MCTS search `n` times, backpropagating and 
+        updating all traveled nodes in path."""
+        for _ in range(n):
+            leaf = self.select(self.root)
+            self.expand(leaf)
+            result = self.simulate(leaf)
+            
+            # Handle win, loss, draw differently; currently treat a tie as a win
+            match result.val:
+                case -1: v = 0
+                case 0: v = 1
+                case 1: v = 1
+            self.backpropagate(v, result.item)
 
 
     def choose_move(self, relative_root: Node) -> Action | None:
+        """Return best move from node `relative_root` according to most explored 
+        child node of `relative_root`. Returns `None` if no children exist for
+        `relative_root` node, or a move of type `Action` if otherwise."""
         # Training done - return most commonly explored node
         best = None
         n = 0
@@ -491,6 +498,7 @@ class MCTS():
         # Otherwise return best move    
         return best.item()
     
+
     def find_node(self, game: Gamestate) -> Node:
         """Returns an existing node if generated & explored, otherwise generates 
         and returns it as a new root. Done to avoid duplicating tree spreads."""
@@ -499,7 +507,8 @@ class MCTS():
         return self.seen[game]
     
     def register(self, node: Node):
-        # Only call on nodes not already seen
+        """Begins tracking of new Node `node` in MCTS. Only call on nodes not
+        already seen."""
         self.seen[node.game] = node
         self.N[node] = 0
         self.U[node] = 0
@@ -507,18 +516,21 @@ class MCTS():
     # def new_root(self, game: Gamestate):
     #     # Update root with new gamestate (turns have passed since last call)
     #     self.root = self.find_node(game)
-    #     self.children.clear()
-    #     self.expand(self.root)
+    #     # self.children.clear()
+    #     # self.expand(self.root)
 
 
-def mcts(game: Gamestate) -> Action:
+def mcts(game: Gamestate, iterations: int, ucb1_c: int=1) -> Action:
+    """The origin point for handling a Monte Carlo Tree Search approach to
+    searching through next possible moves for a Gamestate `game`. 
+    Number of training iterations before returning a recommended move is defined 
+    by `iterations` parameter, and exploitation vs exploration constant in algo
+    by `ucb1_c` param. 
+    Returns an Action, None if untrained or no possible moves."""
     # look into storing mcts constructed between moves, so that it gets smarter 
     # and deeper the longer the game goes on - todo via find_node and moving 
     # MCTS() elsewhere
-    model = MCTS(1, game)
-    for _ in range(10):
+    model = MCTS(ucb1_c, game)
+    for _ in range(iterations):
         model.train()
     return model.choose_move(model.root)
-    
-
-# python -m referee agent agent         t   odo/temp

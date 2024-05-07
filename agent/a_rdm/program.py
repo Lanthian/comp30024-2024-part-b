@@ -9,9 +9,11 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 # COMP30024 Artificial Intelligence, Semester 1 2024
 # Project Part B: Game Playing Agent
 
-from referee.game import PlayerColor, Action, PlaceAction, Coord
-from .control import possible_moves, make_place
+# === Imports ===
 from random import choice
+
+from agent.control import possible_moves, make_place
+from referee.game import PlayerColor, Action, PlaceAction, Coord
 
 
 class Gamestate:

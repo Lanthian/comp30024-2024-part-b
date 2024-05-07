@@ -66,3 +66,11 @@ It’s also reached the point where fiddling with it / improving it further is t
 have left, so I’m going to instead get on with starting the report and polishing a-B for submission. If you’d like to 
 give MCTS a crack I more than welcome it, or if you want to direct efforts elsewhere that’s also fine. I like the idea 
 of monte carlo but just struggling a bit too much with the limited time I have in the coming week to complete it.
+
+
+# 2024.05.07
+Noting down a quick idea before I forget it -- the slowest part of the program right now (besides branching factor of
+  looking deeper) is the generation of children states from this branching factor. If we instead store pre-computed
+  children rather than regenerating them, we can trade memory for processing time. If managed correctly we shouldn't
+  overflow memory limitations, and should hopefully speed up processing time majorly.
+* Today I've also restructured the directory to make coding alternative bots easier
