@@ -74,3 +74,13 @@ Noting down a quick idea before I forget it -- the slowest part of the program r
   children rather than regenerating them, we can trade memory for processing time. If managed correctly we shouldn't
   overflow memory limitations, and should hopefully speed up processing time majorly.
 * Today I've also restructured the directory to make coding alternative bots easier
+
+# 2024.05.08
+In the process of separating the agents into their own folders, many MANY previously unnoticed bugs have been fixed.
+Some examples include:
+* Non ValWrapped tuples in minimax
+* Missing terminal check for turn count > 150 in a-B and minimax
+* Redundant TURN_CAP given MAX_TURNS in referee.game.constants
+* Turn count in Gamestate not copied over when using .copy() method of class
+Additionally, a lot of comments and documentation have been altered + added, and large commented out junks of code 
+deleted.

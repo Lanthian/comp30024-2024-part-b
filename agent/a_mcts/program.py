@@ -1,6 +1,8 @@
 from __future__ import annotations
 """program.py: Supplies an `Agent` class to play Tetress in competition with 
-another agent. Managed by the referee module."""
+another agent. Managed by the referee module.
+Agent selects next move via a Monte Carlo Tree Search algorithm paired to find 
+next optimal move."""
 
 __author__ = "Liam Anthian, and Anthony Hill"
 __credits__ = ["Liam Anthian", "Anthony Hill"] 
@@ -9,21 +11,15 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 # Project Part B: Game Playing Agent
 
 # === Imports ===
-from math import inf, sqrt, log
+from math import sqrt, log
 from random import choice
 
 from agent.control import possible_moves, first_move
 from agent.gamestate import Gamestate
 from agent.heuristics import *
-from agent.prioritydict import PriorityDict
-from agent.utils import render_board     # todo/temp
 from agent.valwrap import ValWrap
 
 from referee.game import Action, PlaceAction, PlayerColor, MAX_TURNS
-
-# === Constants ===
-WIN = 10000
-LOSS = -WIN
 
 
 class Agent:
@@ -59,8 +55,6 @@ class Agent:
         
         else:
             # Intelligently select next move
-            # return minimax(self.game,1,h1)     # todo - too inefficient to run
-            # return ab(self.game, self.color, 2, h3)
             return mcts(self.game, 10, 1)
             # model = MCTS(1, self.game)
             # for _ in range(10):
@@ -76,121 +70,6 @@ class Agent:
         # Clear filled lines as necessary.
         self.game.move(action, color)
 
-        # todo - switch Agents h or move making strategy of choice depending on 
-        #        turn count here.
-        
-        # todo/temp - temporary printing of update call
-        print(f"Testing: {color} played PLACE action: " +
-              f"{", ".join([str(x) for x in action.coords])}")
-
-
-def minimax(game: Gamestate, depth: int, heu) -> Action | None:
-    """Origin point for default minimax approach to searching through next
-    possible moves for a gamestate `game`. Remaining max recursions are 
-    determined from `depth`, and bottom nodes evaluated according to the
-    heuristic `heu`.
-    Returns an Action, None if depth too shallow."""
-    # Can't search less than 1
-    if depth <= 0: return None
-
-    else: 
-        # Find next level of the tree of possible states
-        moves = possible_moves(game.board, game.current)
-        if len(moves) == 0: return None
-
-        # Recurse down this level to depth `depth`, returning best move
-        m = max([sub_minimax(game.child(p,game.current), p, game.current, 
-                             depth-1, heu) for p in moves])
-        return m.item
-
-def sub_minimax(game: Gamestate, move: Action, player: PlayerColor, 
-                depth: int, heu) -> ValWrap:
-    """minimax() sub-function. Depending on players turn, either maximises
-    or minimises outcome. Returns a ValWrap-ed Action."""
-    if depth == 0:
-        # Bottom reached
-        return ValWrap(heu(game, player), move)
-    
-    else: 
-        # Find next level of the tree of possible states
-        moves = possible_moves(game.board, game.current)
-
-        # If no moves remaining, reflect this WIN/LOSS from player's perspective
-        if len(moves) == 0:
-            if game.current == player: return ValWrap(LOSS, move)
-            else: return ValWrap(WIN, move)
-
-        # Proceed with minimum or maximum value depending on turn
-        heus = [sub_minimax(game.child(p,game.current), move, 
-                        player, depth-1, heu) for p in moves]
-
-        if game.current == player:
-            # Player chooses highest next value move
-            return max(heus)
-        else: 
-            # Opponent chooses lowest next value move
-            return min(heus)
-
-
-def ab(game: Gamestate, player: PlayerColor, depth: int, heu) -> Action | None:
-    """The origin point for an alpha-beta pruning minimax approach to searching
-    through next possible moves for a gamestate `game`. Remaining max recursions
-    are determined from `depth`, and bottom nodes are evaluated according to the
-    heuristic `heu` for optimal color `player`.
-    Returns an Action, None if depth too shallow or no possible moves."""
-    # Can't search less than 1
-    if depth <= 0: return None
-
-    a = ValWrap(-inf, None)
-    b = ValWrap(inf, None)
-    return sub_ab(True, game, None, player, depth, heu, a, b).item
-
-def sub_ab(max_flag: bool, game: Gamestate, move: Action, player: PlayerColor, 
-                depth: int, heu, a: ValWrap, b: ValWrap) -> ValWrap:
-    """ab() sub-function. Maximises or minimises outcome depending on 
-    alternating depth level. Equivalent to ab_max if `max_flag` is set to True, 
-    ab_min if set to False. Returns a ValWrap-ed Action."""
-    # -- Check cutoff states --
-    if depth == 0:
-        # Bottom reached
-        return ValWrap(heu(game, player), move)
-    
-    if game.turn > MAX_TURNS:
-        # Last move was final turn - player with most tokens wins
-        if game.counts[game.current] > game.counts[game.current.opponent]:
-            return ValWrap(WIN, move)
-        else: return ValWrap(LOSS, move)
-
-    else: 
-        # Find next level of the tree of possible states
-        next_moves = possible_moves(game.board, game.current)
-        # If no moves remaining, reflect this WIN/LOSS from player's perspective
-        if len(next_moves) == 0:
-            if game.current == player: return ValWrap(LOSS, move)
-            else: return ValWrap(WIN, move)
-            
-
-        # Otherwise, proceed with max/min value search depending on turn
-        for p in next_moves:
-            s = game.child(p,game.current)
-            m = p if (move == None) else move
-
-            # Update maximum possible outcome if flag true
-            if max_flag:
-                a = max(a, sub_ab(False, s, m, player, depth-1, heu, a, b))
-                if a.val >= b.val: return b
-            # Update minimum possible outcome if flag false
-            else:
-                b =  min(b, sub_ab(True, s, m, player, depth-1, heu, a, b))
-                if b.val <= a.val: return a
-
-        # Return a / b if no turnover
-        if max_flag: return a
-        else: return b
-
-
-
-# === MCTS WIP HERE === - todo / temp
 
 class Node():
     """A class to act as a multi-directional linked node in a tree of precursor
@@ -309,7 +188,6 @@ class MCTS():
             scoring = min(max(h1(node.game, node.game.current),-1),1)
             return ValWrap(scoring, node)
         
-        
         # Generate or access already generated children
         p = node.all_children(self)
         # Loss if no moves left
@@ -318,7 +196,7 @@ class MCTS():
 
         # Terminal not reached - choose a random successor somehow
         # Tuple used to convert set into iterable (for `choice` here)
-        rdm_child = choice(tuple(p)) # todo - temp
+        rdm_child = choice(tuple(p))
 
         # Inverse score for recursively deeper child state
         x = self.simulate(rdm_child)
@@ -345,7 +223,8 @@ class MCTS():
         NOT be a terminal node of tree - assert the below before calling:
             len(state.all_children(self)) > 0"""
         # Value wrap with UCB1 value and list all children nodes
-        l = [ValWrap(self.UCB1(child), child) for child in state.all_children(self)]
+        l = [ValWrap(self.UCB1(child), child) 
+             for child in state.all_children(self)]
 
         # # todo - temp
         # print([i.val for i in l])
@@ -428,6 +307,7 @@ class MCTS():
     #     # self.expand(self.root)
 
 
+# temp
 def mcts(game: Gamestate, iterations: int, ucb1_c: int=1) -> Action:
     """The origin point for handling a Monte Carlo Tree Search approach to
     searching through next possible moves for a Gamestate `game`. 
