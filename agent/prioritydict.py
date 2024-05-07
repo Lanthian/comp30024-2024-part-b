@@ -17,8 +17,12 @@ class PriorityDict:
     items as opposed to the O(log(m)) insertion of Queue.PriorityQueue.
     """
     # Class fields - initialised on creation
-    items: dict[int, LifoQueue]={}
-    size: int=0         # tracks size as operations performed
+    items: dict[int, LifoQueue]
+    size: int                       # tracks size as operations performed
+
+    def __init__(self):
+        self.items = {}
+        self.size = 0
 
     def put(self, priority, item):
         """Adds an item of priority `priority` to a PriorityDict."""

@@ -11,7 +11,7 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 # Project Part B: Game Playing Agent
 import subprocess
 
-command = "python -m referee agent\\a_current agent\\a_rdm".split(" ")
+command = "python -m referee agent.a_rdm agent.a_greedy".split(" ")
 result = subprocess.run(command)
 
 # python handler.py
