@@ -23,6 +23,8 @@ from .run import game_user_wait, run_game, \
 from .agent import AgentProxyPlayer
 from .options import get_options, PlayerLoc
 
+# LA: done for handler.py
+from .game.constants import EXIT_CODE_WIN, EXIT_CODE_LOSE, EXIT_CODE_DRAW
 
 def main(options: Namespace|None=None):
     if options is None:
@@ -126,9 +128,13 @@ def main(options: Namespace|None=None):
         # Print the final result under all circumstances
         if result is None:
             rl.critical("result: draw")
+            # LA: done for handler.py
+            exit(EXIT_CODE_DRAW)
         else:
             rl.critical(f"result: {agents[result]['name']}")
-
+            # LA: done for handler.py
+            if str(result) == "RED": exit(EXIT_CODE_WIN)
+            elif str(result) == "BLUE": exit(EXIT_CODE_LOSE)
         exit(0)
 
     except KeyboardInterrupt:
