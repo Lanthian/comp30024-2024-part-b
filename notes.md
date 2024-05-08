@@ -84,3 +84,18 @@ Some examples include:
 * Turn count in Gamestate not copied over when using .copy() method of class
 Additionally, a lot of comments and documentation have been altered + added, and large commented out junks of code 
 deleted.
+
+# 2024.05.09
+* Testing with a-B changed to store generated possible_moves found that across multiple games up to and above turn 35,
+  no stored moves were ever retrieved (that is, no use was found from this storing process).
+  * I've opted to remove the code that stored these states in turn for the time being, but it can always be added back
+    if another idea is found that wishes to encorporate them.
+    ``` 
+    seen: dict[str: list[Action]]
+
+    # Avoid recalculating possible moves by storing game state in `seen`
+    flat_b = flatten_board(game.board)
+    if flat_b not in agt.seen: 
+        agt.seen[flat_b] = possible_moves(game.board, game.current)
+    next_moves = agt.seen[flat_b]
+    ```
