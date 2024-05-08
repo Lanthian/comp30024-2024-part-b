@@ -99,3 +99,5 @@ deleted.
         agt.seen[flat_b] = possible_moves(game.board, game.current)
     next_moves = agt.seen[flat_b]
     ```
+* New a_greedy_a-B tested: Plays as a standard greedy Agent until < 15 possible moves remain, then it a-B searches 3
+  moves ahead (new record high!). Can do 5 when given a decent amount of time, can do 4 reasonably but slowly.
