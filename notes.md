@@ -101,3 +101,7 @@ deleted.
     ```
 * New a_greedy_a-B tested: Plays as a standard greedy Agent until < 15 possible moves remain, then it a-B searches 3
   moves ahead (new record high!). Can do 5 when given a decent amount of time, can do 4 reasonably but slowly.
+
+* (05.09 Morning): Code that stored states reintroduced, as with tests it's actually useful for depths > 2 (or 3) in
+  a-B; depths that weren't used in a-B by itself but ARE used in Greedy_a-B. Whether or not it adds more processing than
+  it saves, hard to say at the moment.

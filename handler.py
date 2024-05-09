@@ -10,47 +10,9 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 # COMP30024 Artificial Intelligence, Semester 1 2024
 # Project Part B: Game Playing Agent
 import subprocess
+# import pandas as pd
 
 from referee.game.constants import EXIT_CODE_WIN, EXIT_CODE_LOSE, EXIT_CODE_DRAW
-
-def main():
-    RUNS = 5
-
-    # Prepare agents
-    agents = [Agenthandler("agent.a_rdm", "Rdm"),
-              Agenthandler("agent.a_greedy", "Greedy"),
-              Agenthandler("agent.a_a-B", "α-β")]
-
-    # Test agents (from both player 1 and player 2 perspectives)
-    for red in agents:
-        for blu in agents:
-
-            # Command ran and stored RUNS amount of times
-            cmd = ["python", "-m", "referee", red.path, blu.path]
-            for i in range(RUNS):
-                print(f"Running: {red.name} v {blu.name}, game {i+1}")
-                result = subprocess.run(cmd, stdout=subprocess.DEVNULL)
-
-                # Interpret result
-                if result.returncode    == EXIT_CODE_WIN: u = 1
-                elif result.returncode  == EXIT_CODE_LOSE: u = -1
-                elif result.returncode  == EXIT_CODE_DRAW: u = 0
-                else: continue          # Error occured, skip
-
-                red.update_score(0, u)
-                blu.update_score(1, -u)
-
-    # Stored data
-    print([a.__str__() for a in agents])
-
-
-def simple_run():
-    """Basic function to manually play out a game without altering main()."""
-    agent_1 = "agent.a_greedy"
-    agent_2 = "agent.a_greedy_a-B"
-    command = ["python", "-m", "referee", agent_1, agent_2]
-    # command = "python -m referee agent.a_rdm agent.a_greedy".split(" ")
-    subprocess.run(command)
 
 
 class Agenthandler:
@@ -81,6 +43,61 @@ class Agenthandler:
         self.score[player] = add_tuple(self.score[player], x)
 
 
+def main():
+    RUNS = 5
+
+    # Prepare agents
+    agents = [Agenthandler("agent.a_rdm", "Rdm"),
+              Agenthandler("agent.a_greedy", "Greedy"),
+              Agenthandler("agent.a_grab", "Gr-αβ"),
+              Agenthandler("agent.a_a-B", "α-β")]
+    agent_selection = [agents[0], agents[2]]
+
+    # Test agents (from both player 1 and player 2 perspectives)
+    for red in agent_selection:
+        for blu in agent_selection:
+
+            # Command ran and stored RUNS amount of times
+            cmd = ["python", "-m", "referee", red.path, blu.path]
+            for i in range(RUNS):
+                print(f"Running: {red.name} v {blu.name}, game {i+1}")
+                result = subprocess.run(cmd, stdout=subprocess.DEVNULL)
+
+                # Interpret result
+                u = interpret_returncode(result.returncode)
+                if u == None: continue          # Error occured, skip
+
+                red.update_score(0, u)
+                blu.update_score(1, -u)
+
+    # Stored data
+    print([a.__str__() for a in agent_selection])
+
+
+def simple_run(output: bool=True, count: int=1):
+    """Basic function to manually play out a game without altering main()."""
+    agent_1 = "agent.a_greedy"
+    agent_2 = "agent.a_grab"
+    command = ["python", "-m", "referee", agent_1, agent_2]
+    # command = "python -m referee agent.a_rdm agent.a_greedy".split(" ")
+
+    print("Running: " + " ".join(command))
+    for i in range(count):
+        if output: r = subprocess.run(command)
+        else: r = subprocess.run(command, stdout=subprocess.DEVNULL)
+        print(f"Outcome {i+1}: {interpret_returncode(r.returncode)}")
+
+
+def interpret_returncode(returncode: int) -> int | None:
+    """Shorthand function to interpret returncode from a referee subprocess
+    depending on exit codes defined in referee.game.constants.py. Returns `None`
+    if non game outcome specific returncode received."""
+    if returncode           == EXIT_CODE_WIN: return 1
+    elif returncode         == EXIT_CODE_LOSE: return -1
+    elif returncode         == EXIT_CODE_DRAW: return 0
+    else: return None
+
+
 def add_tuple(a: tuple, b: tuple):
     """Returns the sum of two tuples `a` and `b` together. Will match the length
     of the shorter tuple."""
@@ -90,6 +107,6 @@ def add_tuple(a: tuple, b: tuple):
 
 
 # main()
-simple_run()
+simple_run(False, 2)
 
-# python handler.py
+# py handler.py
