@@ -22,6 +22,7 @@ from referee.game import Action, PlayerColor, MAX_TURNS
 # === Constants ===
 WIN = 10000
 LOSS = -WIN
+DEPTH = 2
 
 
 class Agent:
@@ -57,7 +58,7 @@ class Agent:
         
         else:
             # Intelligently select next move
-            return ab(self.game, self.color, 2, h3)
+            return ab(self.game, self.color, DEPTH, h3)
 
     def update(self, color: PlayerColor, action: Action, **referee: dict):
         """

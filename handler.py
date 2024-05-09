@@ -76,7 +76,7 @@ def main():
 
 def simple_run(output: bool=True, count: int=1):
     """Basic function to manually play out a game without altering main()."""
-    agent_1 = "agent.a_greedy"
+    agent_1 = "agent.a_rdm"
     agent_2 = "agent.a_grab"
     command = ["python", "-m", "referee", agent_1, agent_2]
     # command = "python -m referee agent.a_rdm agent.a_greedy".split(" ")
@@ -107,6 +107,6 @@ def add_tuple(a: tuple, b: tuple):
 
 
 # main()
-simple_run(False, 2)
+simple_run(True, 2)
 
 # py handler.py

@@ -11,15 +11,19 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 # Project Part B: Game Playing Agent
 
 # === Imports ===
-from math import sqrt, log
+from math import inf, log, sqrt
 from random import choice
 
 from agent.control import possible_moves, first_move
-from agent.gamestate import Gamestate
+from agent.gamestate import Gamestate, flatten_board
 from agent.heuristics import *
 from agent.valwrap import ValWrap
 
 from referee.game import Action, PlaceAction, PlayerColor, MAX_TURNS
+
+# === Constants ===
+ITERATIONS = 10
+C = 0       # currently set to massively prefer exploitation over exploration
 
 
 class Agent:
@@ -29,6 +33,7 @@ class Agent:
     """
     first_move: bool
     color: PlayerColor
+    # model: MCTS | None              # None until initialised
 
     def __init__(self, color: PlayerColor, **referee: dict):
         """
@@ -38,6 +43,7 @@ class Agent:
         self.first_move = True
         self.color = color
         self.game = Gamestate()
+        self.model = None
 
     def action(self, **referee: dict) -> Action:
         """
@@ -55,11 +61,12 @@ class Agent:
         
         else:
             # Intelligently select next move
-            return mcts(self.game, 10, 1)
-            # model = MCTS(1, self.game)
-            # for _ in range(10):
-            #     model.train()
-            # return model.choose_move(model.root)
+            # Prepare model for playing on 'second move'
+            if self.model == None: self.model = MCTS(C, self.game)
+
+            # Train model set amount of times and select next move
+            self.model.train(ITERATIONS)
+            return self.model.choose_move(self.model.root)
 
     def update(self, color: PlayerColor, action: Action, **referee: dict):
         """
@@ -69,6 +76,8 @@ class Agent:
         # There is only one action type, PlaceAction. 
         # Clear filled lines as necessary.
         self.game.move(action, color)
+        # If >= second move for player, update Monte Carlo Tree with new root
+        if self.model != None: self.model.new_root(self.game)
 
 
 class Node():
@@ -100,11 +109,13 @@ class Node():
             # Add all children states to node
             for move in possible_moves(self.game.board, clr):
                 sub_game = self.game.child(move, clr)
-                # Don't store in mcts if already existant
-                if sub_game not in monte.seen:
+                # Don't store in mcts if already generated
+                f = flatten_board(sub_game.board)
+                if f not in monte.seen:
                     s = Node(sub_game, move, self)
-                    monte.register(s)
-                self.sub.add(monte.seen[sub_game])
+                    monte.register(s, f)
+                self.sub.add(monte.seen[f])
+        else: monte.reuse_count += 1
             
         return self.sub
     
@@ -125,10 +136,15 @@ class MCTS():
     ucb1_c: float
 
     children: dict[Node: set[Node]]
-    seen: dict[Gamestate: Node]     # Gamestate dictionary to search for nodes
+    seen: dict[str: Node]     # Flat board dictionary to search for nodes
     root: Node
 
     def __init__(self, c: float, base: Gamestate):
+        """
+        The initiation point for handling a Monte Carlo Tree Search approach to 
+        searching through next possible moves from an initial Gamestate `base`. 
+        Exploitation vs exploration constant in ubc1 algo defined by `c` param.
+        """
         # todo - abstract this code away from Gamestate
         self.root = Node(base)
         self.ucb1_c = c 
@@ -136,12 +152,12 @@ class MCTS():
         self.N = {}
         self.U = {}
         self.children = {}
+        
         self.seen = {}
+        self.reuse_count = 0
+
         # Immediately expand 
         self.expand(self.root)
-        # todo - work here needs to be done to ensure count of plays aren't lost
-        #      - can do this by storing in Gamestate and not regenerating each
-        #        time a player is required.
 
 
     def select(self, state: Node) -> Node:     
@@ -168,8 +184,9 @@ class MCTS():
         if state in self.children: return
 
         # Add to seen dictionary if first sighting
-        if state.game not in self.seen:
-            self.register(state)
+        f = flatten_board(state.game.board)
+        if f not in self.seen:
+            self.register(state, f)
 
         # Otherwise enqueue children to MCTS and prepare count dictionaries
         self.children[state] = state.all_children(self)
@@ -203,17 +220,22 @@ class MCTS():
         x.invert()
         return x
 
-    def backpropagate(self, result: int, state: Node | None):
+    def backpropagate(self, result: int, state: Node):
         """Step 4: utilise terminal state outcome to update states from node
         to root, adding newly seen nodes into playout tree."""
-        # Check if at the top (no further backpropagation needed)
+        # Check if by some error state is unset
         if state == None:
+            # print("ERROR: Unset node backpropagated to somehow. Investigate.")
             return
-        
+
         # Update state/node success
         self.N[state] += 1
         self.U[state] += result
-        
+
+        # Check if at the top (no further backpropagation needed)
+        if state == self.root:
+            return
+        # Otherwise backtrack further
         self.backpropagate(1-result, state.parent)
 
 
@@ -240,7 +262,8 @@ class MCTS():
         if node.parent == None: return None
 
         n = self.N[node]
-        exploit = self.U[node] / n
+        # If n == 0 (not yet explored somehow), prioritise exploiting it
+        exploit = self.U[node] / n if n != 0 else inf
         # explore = sqrt(log(self.N[node.parent], n) / n)
         explore = sqrt(log(n) / n)
         return exploit + self.ucb1_c * explore
@@ -260,6 +283,7 @@ class MCTS():
                 case 0: v = 1
                 case 1: v = 1
             self.backpropagate(v, result.item)
+            # print(f"Stored v Reuse: {len(self.seen)} . {self.reuse_count}")
 
 
     def choose_move(self, relative_root: Node) -> Action | None:
@@ -289,36 +313,22 @@ class MCTS():
     def find_node(self, game: Gamestate) -> Node:
         """Returns an existing node if generated & explored, otherwise generates 
         and returns it as a new root. Done to avoid duplicating tree spreads."""
-        if game not in self.seen:
-            self.register(Node(game))
-        return self.seen[game]
+        f = flatten_board(game.board)
+        if f not in self.seen:
+            self.register(Node(game), f)
+        return self.seen[f]         # node of game
     
-    def register(self, node: Node):
+    def register(self, node: Node, flat_b: str | None = None):
         """Begins tracking of new Node `node` in MCTS. Only call on nodes not
         already seen."""
-        self.seen[node.game] = node
+        if flat_b == None: flat_b = flatten_board(node.game.board)
+        self.seen[flat_b] = node
         self.N[node] = 0
         self.U[node] = 0
 
-    # def new_root(self, game: Gamestate):
-    #     # Update root with new gamestate (turns have passed since last call)
-    #     self.root = self.find_node(game)
-    #     # self.children.clear()
-    #     # self.expand(self.root)
-
-
-# temp
-def mcts(game: Gamestate, iterations: int, ucb1_c: int=1) -> Action:
-    """The origin point for handling a Monte Carlo Tree Search approach to
-    searching through next possible moves for a Gamestate `game`. 
-    Number of training iterations before returning a recommended move is defined 
-    by `iterations` parameter, and exploitation vs exploration constant in algo
-    by `ucb1_c` param. 
-    Returns an Action, None if untrained or no possible moves."""
-    # look into storing mcts constructed between moves, so that it gets smarter 
-    # and deeper the longer the game goes on - todo via find_node and moving 
-    # MCTS() elsewhere
-    model = MCTS(ucb1_c, game)
-    for _ in range(iterations):
-        model.train()
-    return model.choose_move(model.root)
+    def new_root(self, game: Gamestate):
+        """Update MCTS with new Gamestate `game` at the root - turns have passed
+        and a new root is present."""
+        self.root = self.find_node(game)
+        # self.children.clear()
+        # self.expand(self.root)

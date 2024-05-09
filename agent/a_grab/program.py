@@ -1,7 +1,9 @@
 """program.py: Supplies an `Agent` class to play Tetress in competition with 
 another agent. Managed by the referee module.
-Agent selects next move via an alpha-Beta pruned search algorithm paired with 
-heuristics to find next optimal path."""
+Agent selects next move depending on game stage (evaluated via next possible 
+moves count) - either via an alpha-Beta pruned search algorithm paired with 
+heuristics to find next optimal path, or a straightforward greedy evaluation of
+next best move using heuristics at base depth."""
 
 __author__ = "Liam Anthian, and Anthony Hill"
 __credits__ = ["Liam Anthian", "Anthony Hill"] 
@@ -23,7 +25,7 @@ from referee.game import Action, PlayerColor, MAX_TURNS
 # === Constants ===
 WIN = 10000
 LOSS = -WIN
-THRESHOLD = 15
+THRESHOLD = 1000
 DEPTH = 4
 
 

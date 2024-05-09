@@ -2,5 +2,5 @@
 # Project Part B: Game Playing Agent
 
 # Done to designate which Agent coded will be the one submitted
-from .a_g_ab.program import Agent
+from .a_grab.program import Agent
 # python -m referee agent agent
