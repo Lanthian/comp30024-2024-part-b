@@ -4,4 +4,4 @@
 # Done to designate which Agent coded will be the one submitted
 from .a_grab.program import Agent
 # python -m referee agent agent
-# py -m referee agent agent
+# py -m referee agent.a_mcts agent

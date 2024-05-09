@@ -25,8 +25,7 @@ from referee.game import Action, PlayerColor, MAX_TURNS
 WIN = 10000
 LOSS = -WIN
 THRESHOLD = 15
-DEPTH = 4
-
+DEPTH = 3
 
 class Agent:
     """
@@ -71,16 +70,20 @@ class Agent:
 
             if len(moves) < THRESHOLD:
                 # Possible moves below threshold, use a-B
-                return ab(self, DEPTH, h3)
+                return ab(self, DEPTH, h2)
             
             # Otherwise, greedy pick based on heuristic
-            best = inf
+            best = -inf
             best_move = None
+
+            h_combined = h_combiner([(h1, 1/8), (h3, 1)])
 
             for move in moves:
                 child = self.game.child(move, self.color)
-                h = h3(child, self.color)
-                if h < best:
+                # h = multi_h([(h1, 1/8), (h3, 1)], child, self.color)
+                h = h_combined(child, self.color)
+                # Maximise h here
+                if h > best:
                     best = h
                     best_move = move
             return best_move

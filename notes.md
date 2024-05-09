@@ -156,3 +156,19 @@ deleted.
 * Can try generating just one child node at a time for MCTS - should MASSIVELY improve the algorithm, but would require
   an unbiased method of generating 1/180 children states. Calling a function that is suspended and unpauses, calculates 
   and re-pauses whenever a new child is needed would be ideal. Any further work with MCTS should look into this.
+
+* I think we should change the threshold in Greedy a-B so that it kicks in sooner, as currently 15 remaining moves can 
+  be 15 different pieces all placed off one tile - inaccurate representation of how close to game end the game is. 
+  * Can instead use a combined measure of remaining air cells on the board, & low h3 measure with weighting (1,0) for 
+    internal (a,b) (remaining free neighbour cells for player). Or alternatively a ratio with weighting (1,-1) - when 
+    over half of the remaining air tiles are neighbouring tiles to either color, a good time for a-B to maximise h1.
+  * If turn count is approaching 150 and nowhere near endgame threshold above, aim to maximise with h1 instead.
+  * We want the a-B to kick in when match outcome is near or things are looking dicey for our agent (only use it's 
+    brains if it has to, due to how computationally expensive this is).
+  * Depth of a-B search can be dynamic regarding how close to game end we are. 
+
+* (Later) Hang on, possible buffoon alert: We should passively train a MCTS on a crazy amount of games, and store this
+  trained MCTS somewhere. THEN, load it in via txt file in the `__init__` stage of our agent to determine our early game 
+  playstyle.
+  * We will need to alter first_move to consider all possible starting states so we can train the MCTS across all 
+    starting states. Will be a better implementation than it currently is however, for sure.
