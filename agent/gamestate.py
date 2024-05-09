@@ -18,9 +18,9 @@ class Gamestate:
     to reduce calculation time.
     """
     # Board represented as a sparse dictionary to save space
-    board: dict[Coord, PlayerColor] 
+    board: dict[Coord, PlayerColor]
     current: PlayerColor
-    turn: int                        
+    turn: int  
 
     # Below count done as to minimise recalculation of dictionary elements
     counts: dict[PlayerColor, int]

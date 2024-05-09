@@ -13,9 +13,8 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 
 # === Imports ===
 from math import inf
-from queue import LifoQueue
 
-from agent.control import possible_moves, first_move
+from agent.control import first_move, possible_moves
 from agent.gamestate import Gamestate, flatten_board
 from agent.heuristics import *
 from agent.valwrap import ValWrap
@@ -25,7 +24,7 @@ from referee.game import Action, PlayerColor, MAX_TURNS
 # === Constants ===
 WIN = 10000
 LOSS = -WIN
-THRESHOLD = 1000
+THRESHOLD = 15
 DEPTH = 4
 
 

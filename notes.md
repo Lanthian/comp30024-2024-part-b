@@ -4,7 +4,8 @@ Current implementation breaks due to an illegal action taken - this seems to sug
 * Rendered the board using utils.py - issue exists in move generation, not board state storing.
   * ACTUALLY, turns out the issue was that the PriorityDict that stored possible moves wasn't clearing between calls in 
     program.py action(). Implementing a simple .clear() method into prioritydict.py fixed this issue.
-
+  * 2024.05.09: Unsure if I noted it elsewhere, but this issue was also resolved by moving default values for the 
+    PriorityDict class into an `__init__` function, instead of having it constant between all dictionaries....
 
 
 # 2024.04.26
@@ -86,6 +87,7 @@ Additionally, a lot of comments and documentation have been altered + added, and
 deleted.
 
 # 2024.05.09
+(Early AMs):
 * Testing with a-B changed to store generated possible_moves found that across multiple games up to and above turn 35,
   no stored moves were ever retrieved (that is, no use was found from this storing process).
   * I've opted to remove the code that stored these states in turn for the time being, but it can always be added back
@@ -102,6 +104,55 @@ deleted.
 * New a_greedy_a-B tested: Plays as a standard greedy Agent until < 15 possible moves remain, then it a-B searches 3
   moves ahead (new record high!). Can do 5 when given a decent amount of time, can do 4 reasonably but slowly.
 
-* (05.09 Morning): Code that stored states reintroduced, as with tests it's actually useful for depths > 2 (or 3) in
+(Morning):
+* Code that stored states reintroduced, as with tests it's actually useful for depths > 2 (or 3) in
   a-B; depths that weren't used in a-B by itself but ARE used in Greedy_a-B. Whether or not it adds more processing than
   it saves, hard to say at the moment.
+
+(Evening):
+* Killer heuristic implementation attempted in Greedy_a-B, program timed out, meaning it surpassed 180 seconds for just
+  one turn. Sorting possible_moves inside a-B is not a viable method of creating a killer heuristic unfortunately, as 
+  this sorting step simply takes too long. Code will be archived here.
+  ```
+  # ATTEMPT AT KILLER HEURISTIC - sort moves before recursing over
+  agt.seen[flat_b] = sorted_moves(game, game.current, h3)
+
+  ...
+
+  def sorted_moves(game: Gamestate, player: PlayerColor, heu) -> list[Action]:
+    """
+    Takes a Gamestate `game` and a `player` defined by their PlayerColor and 
+    returns all possible next moves for said player in the form of a list of 
+    Actions, SORTED according to value output by evaluator `heu`.
+    """
+    # Store moves in sets based on heuristic value
+    mvs: dict[int: set] = {}
+
+    for (coord, color) in game.board.items():
+        if color == player:
+            # duplicate moves generated and ignored here (possible improvement)
+            for move in tetrominoes_plus(coord, set(game.board.keys())):
+                # Generate child and evaluate according to `heu`
+                h = heu(game.child(move, player), player)
+
+                # Prepare set for new heuristic value `h` seen, then add on
+                if h not in mvs: mvs[h] = set()
+                mvs[h].add(move) 
+    
+    # Sort heuristic values (previous h's) ascending
+    # print(mvs)
+
+    heus = list(mvs.keys())
+    heus.sort()       
+
+    list_of_lists = [list(mvs[h]) for h in heus]
+    flat = [j for i in list_of_lists for j in i]
+
+    return flat
+  ```  
+* It seems that the main thing slowing down MCTS, a-B and all other searches is the expensiveness (time wise) to 
+  generate all children states for a node. These endeavours today have shown that while attempting to optimise elsewhere
+  isn't bad, the source of all problem at the moment is the stacking branching factor as we go down a path.
+* Can try generating just one child node at a time for MCTS - should MASSIVELY improve the algorithm, but would require
+  an unbiased method of generating 1/180 children states. Calling a function that is suspended and unpauses, calculates 
+  and re-pauses whenever a new child is needed would be ideal. Any further work with MCTS should look into this.
