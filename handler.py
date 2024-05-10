@@ -9,6 +9,7 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 
 # COMP30024 Artificial Intelligence, Semester 1 2024
 # Project Part B: Game Playing Agent
+
 import subprocess
 # import pandas as pd
 
@@ -19,39 +20,51 @@ class Agenthandler:
     """Class to store Agent implementation details and scoring from games."""
     path: str
     name: str
-    score: dict[int: tuple[int,int,int]]
+    score: dict[str: dict[int: tuple[int,int,int]]]
 
     def __init__(self, path: str, name: str):
         self.path = path
         self.name = name
- 
         self.score = {}
-        self.score[0] = (0,0,0)
-        self.score[1] = (0,0,0)
 
     def __str__(self) -> str:
-        return f"{self.name} @ {self.path}; R{self.score[0]} B{self.score[1]}"
+        score_ratio = [f"{name}: R {self._ratio(s[0])}, B {self._ratio(s[1])}" 
+                       for name,s in self.score.items()]
+        return f"{self.name} @ {self.path}; {score_ratio}"
 
-    def update_score(self, player: int, outcome: int):
-        """Adds a match outcome tuple to existing score count. `player` 
-        represents starting turn of match for agent. `outcome` is a flag for 
-        result from game match up - win, loss, or draw."""
+    def update_score(self, opp: str, player: int, outcome: int):
+        """Adds a match outcome tuple to existing score count. `opponent` is the
+        name of the agent versed. `player` represents starting turn of match for 
+        agent. `outcome` is a flag for result from game match up - win, loss, or 
+        draw."""
+        # Register new opponent if not seen before
+        if opp not in self.score:
+            self.score[opp] = {}
+            self.score[opp][0] = (0,0,0)        # Red
+            self.score[opp][1] = (0,0,0)        # Blue
+
         match outcome:
             case 1: x = (1,0,0)          # Win
             case 0: x = (0,1,0)          # Draw
             case -1: x = (0,0,1)         # Loss
-        self.score[player] = add_tuple(self.score[player], x)
+        self.score[opp][player] = add_tuple(self.score[opp][player], x)
+
+    def _ratio(self, x: tuple[int,int,int]) -> str:
+        """Converts a (win,draw,loss) three tuple into a win/loss string ratio.
+        Doesn't calculate actual float value."""
+        return f"{x[0]}/{x[2]}"
 
 
 def main():
-    RUNS = 5
+    RUNS = 1
 
     # Prepare agents
     agents = [Agenthandler("agent.a_rdm", "Rdm"),
               Agenthandler("agent.a_greedy", "Greedy"),
               Agenthandler("agent.a_grab", "Gr-αβ"),
-              Agenthandler("agent.a_a-B", "α-β")]
-    agent_selection = [agents[0], agents[2]]
+              Agenthandler("agent.a_a-B", "α-β"),
+              Agenthandler("agnet.a_mcts", "MCTS")]
+    agent_selection = agents[0:4]   #[agents[0], agents[1]]
 
     # Test agents (from both player 1 and player 2 perspectives)
     for red in agent_selection:
@@ -67,11 +80,13 @@ def main():
                 u = interpret_returncode(result.returncode)
                 if u == None: continue          # Error occured, skip
 
-                red.update_score(0, u)
-                blu.update_score(1, -u)
+                red.update_score(blu.name, 0, u)
+                blu.update_score(red.name, 1, -u)
 
-    # Stored data
-    print([a.__str__() for a in agent_selection])
+    # Output Stored data
+    for a in agent_selection:
+        print(a.__str__())
+    # print([a.__str__() for a in agent_selection])
 
 
 def simple_run(output: bool=True, count: int=1):
@@ -106,7 +121,7 @@ def add_tuple(a: tuple, b: tuple):
     return tuple(map(add, a, b))
 
 
-# main()
-simple_run(True, 2)
+main()
+# simple_run(True, 2)
 
 # py handler.py
