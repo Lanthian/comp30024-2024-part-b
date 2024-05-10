@@ -73,20 +73,7 @@ class Agent:
                 return ab(self, DEPTH, h2)
             
             # Otherwise, greedy pick based on heuristic
-            best = -inf
-            best_move = None
-
-            h_combined = h_combiner([(h1, 1/8), (h3, 1)])
-
-            for move in moves:
-                child = self.game.child(move, self.color)
-                # h = multi_h([(h1, 1/8), (h3, 1)], child, self.color)
-                h = h_combined(child, self.color)
-                # Maximise h here
-                if h > best:
-                    best = h
-                    best_move = move
-            return best_move
+            return greedy(self.game, self.color, moves)
 
     def update(self, color: PlayerColor, action: Action, **referee: dict):
         """
@@ -96,6 +83,27 @@ class Agent:
         # There is only one action type, PlaceAction. 
         # Clear filled lines as necessary.
         self.game.move(action, color)
+
+
+def greedy(game: Gamestate, player: PlayerColor, 
+           moves: list[Action]) -> Action:
+    """Greedy search with heuristics. Searches through a precalculated list of 
+    possible next moves `moves` and returns the most promising move according
+    to heuristics."""
+    best = -inf
+    best_move = None
+
+    h_combined = h_combiner([(h1, 1/8), (h3, 1)])
+
+    for move in moves:
+        child = game.child(move, player)
+        # h = multi_h([(h1, 1/8), (h3, 1)], child, self.color)
+        h = h_combined(child, player)
+        # Maximise h here
+        if h > best:
+            best = h
+            best_move = move
+    return best_move
 
 
 def ab(agt: Agent, depth: int, heu) -> Action | None:
@@ -139,6 +147,11 @@ def sub_ab(max_flag: bool, game: Gamestate, move: Action, player: PlayerColor,
         if len(next_moves) == 0:
             if game.current == player: return ValWrap(LOSS, move)
             else: return ValWrap(WIN, move)
+        
+        # or, if notably >> threshold again and any move has been uncovered, cut 
+        # a-B search short at this depth - FAILSAFE against expensive search
+        elif (len(next_moves) > 5 * THRESHOLD * depth) and (move != None):
+            return ValWrap(heu(game, player), move)
 
 
         # Otherwise, proceed with max/min value search depending on turn
