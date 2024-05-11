@@ -10,8 +10,11 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 # COMP30024 Artificial Intelligence, Semester 1 2024
 # Project Part B: Game Playing Agent
 
+# === Imports ===
+from datetime import datetime
+import os
+from re import sub
 import subprocess
-# import pandas as pd
 
 from referee.game.constants import EXIT_CODE_WIN, EXIT_CODE_LOSE, EXIT_CODE_DRAW
 
@@ -61,10 +64,24 @@ def main():
     # Prepare agents
     agents = [Agenthandler("agent.a_rdm", "Rdm"),
               Agenthandler("agent.a_greedy", "Greedy"),
-              Agenthandler("agent.a_grab", "Gr-αβ"),
-              Agenthandler("agent.a_a-B", "α-β"),
+              Agenthandler("agent.a_grab", "Gr-aB"),
+              Agenthandler("agent.a_a-B", "a-B"),
               Agenthandler("agnet.a_mcts", "MCTS")]
-    agent_selection = agents[0:4]   #[agents[0], agents[1]]
+    agent_selection = agents[0:2] #agents[0:3]   #[agents[0], agents[1]]
+
+
+    # Prepare backup output file
+    """Below code inspired by stackoverflow post by user hetsch:
+        Post: https://stackoverflow.com/a/14125914
+        User: https://stackoverflow.com/users/1230358/hetsch"""
+    file_name = f"{sub('[-.: ]', '', str(datetime.now()))}.txt"
+    directory = os.path.join(os.getcwd(), r'out')
+    # Make directory if non-existant
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    # Open the file!
+    fp = open(os.path.join(directory, file_name), "w")
+
 
     # Test agents (from both player 1 and player 2 perspectives)
     for red in agent_selection:
@@ -83,10 +100,20 @@ def main():
                 red.update_score(blu.name, 0, u)
                 blu.update_score(red.name, 1, -u)
 
+                # Print to backup
+                fp.write(f"Running: {red.name} v {blu.name}, game {i+1}" + 
+                         " -- " +
+                         f"Outcome: {interpret_returncode(result.returncode)}" +
+                         "\n")
+
     # Output Stored data
     for a in agent_selection:
         print(a.__str__())
+        fp.write(a.__str__() + "\n")
     # print([a.__str__() for a in agent_selection])
+
+    # Close output file
+    fp.close()
 
 
 def simple_run(output: bool=True, count: int=1):
@@ -122,6 +149,6 @@ def add_tuple(a: tuple, b: tuple):
 
 
 main()
-# simple_run(True, 2)
+# simple_run(True, 1)
 
 # py handler.py
