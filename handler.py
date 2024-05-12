@@ -2,6 +2,8 @@
 implementations to handle testing and evaluation of strategies against each
 other. Run with: 
     'python handler.py'
+Works off (*and needs*) a modified referee instance that contains and outputs 
+custom return codes defined in referee.game.constants.
 """
 
 __author__ = "Liam Anthian"
@@ -66,8 +68,8 @@ def main():
               Agenthandler("agent.a_greedy", "Greedy"),
               Agenthandler("agent.a_grab", "Gr-aB"),
               Agenthandler("agent.a_a-B", "a-B"),
-              Agenthandler("agnet.a_mcts", "MCTS")]
-    agent_selection = agents[0:2] #agents[0:3]   #[agents[0], agents[1]]
+              Agenthandler("agent.a_mcts", "MCTS")]
+    agent_selection = agents #agents[0:3]   #[agents[0], agents[1]]
 
 
     # Prepare backup output file
@@ -118,7 +120,7 @@ def main():
 
 def simple_run(output: bool=True, count: int=1):
     """Basic function to manually play out a game without altering main()."""
-    agent_1 = "agent.a_rdm"
+    agent_1 = "agent.a_mcts"
     agent_2 = "agent.a_grab"
     command = ["python", "-m", "referee", agent_1, agent_2]
     # command = "python -m referee agent.a_rdm agent.a_greedy".split(" ")

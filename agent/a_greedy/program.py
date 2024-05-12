@@ -53,7 +53,7 @@ class Agent:
             pd = PriorityDict()
             for move in possible_moves(self.game.board, self.color):
                 child = self.game.child(move, self.color)
-                h = -h1(child, self.color)  # Inverting for use in Priority Dict
+                h = -h3(child, self.color)  # Inverting for use in Priority Dict
                 pd.put(h, move)
             return pd.get()
 

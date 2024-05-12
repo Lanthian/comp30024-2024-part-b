@@ -260,6 +260,8 @@ class MCTS():
         if used on a tree root node, a float otherwise."""
         # Ensure root node is not used here
         if node.parent == None: return None
+        # And child node scouted has been expanded
+        if node not in self.N: return inf
 
         n = self.N[node]
         # If n == 0 (not yet explored somehow), prioritise exploiting it
