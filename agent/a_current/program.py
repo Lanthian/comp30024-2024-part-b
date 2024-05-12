@@ -11,7 +11,6 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 # === Imports ===
 from math import inf, sqrt, log
 from random import choice
-from concurrent.futures import ThreadPoolExecutor
 
 from agent.control import possible_moves, first_move
 from agent.gamestate import Gamestate
@@ -382,27 +381,22 @@ class MCTS():
                 case 0: v = 1
                 case 1: v = 1
             self.backpropagate(v, result.item)
-    
-    
-    def train_iteration(self):
-        """Perform a single iteration of MCTS training."""
-        leaf = self.select(self.root)
-        self.expand(leaf)
-        result = self.simulate(leaf)
-        # Handle win, loss, draw differently; currently treat a tie as a win
-        v = 1 if result.val >= 0 else 0
-        self.backpropagate(v, result.item)
 
-    def train_threads(self, n: int=1, num_threads: int=1):
-        """Simulate through an MCTS search `n` times using multiple threads."""
-        # Create a thread pool executor
-        with ThreadPoolExecutor(max_workers=num_threads) as executor:
-            # Submit tasks to the thread pool
-            future_results = [executor.submit(self.train_iteration) for _ in range(n)]
+    def train(self, n: int=1):
+        """Simulate through an MCTS search `n` times, backpropagating and 
+        updating all traveled nodes in path."""
+        for _ in range(n):
+            leaf = self.select(self.root)
+            self.expand(leaf)
+            result = self.simulate(leaf)
             
-            # Process results
-            for future in future_results:
-                future.result()
+            # Handle win, loss, draw differently; currently treat a tie as a win
+            match result.val:
+                case -1: v = 0
+                case 0: v = 1
+                case 1: v = 1
+            self.backpropagate(v, result.item)
+    
 
 
     def choose_move(self, relative_root: Node) -> Action | None:
@@ -461,7 +455,7 @@ def mcts(game: Gamestate, iterations: int, ucb1_c: int=1) -> Action:
     # and deeper the longer the game goes on - todo via find_node and moving 
     # MCTS() elsewhere
     model = MCTS(ucb1_c, game)
-    model.train_threads(iterations, num_threads=5)
-    #for _ in range(iterations):
-    #    model.train()
+    #model.train_threads(iterations, num_threads=5)
+    for _ in range(iterations):
+        model.train()
     return model.choose_move(model.root)
