@@ -8,7 +8,7 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 # Project Part B: Single Player Tetress
 
 # === Imports ===
-from agent.control import make_place
+from .control import make_place
 from referee.game import Action, Coord, PlayerColor
 
 
