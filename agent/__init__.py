@@ -2,4 +2,5 @@
 # Project Part B: Game Playing Agent
 
 # Done to designate which Agent coded will be the one submitted
-from .a_grab.program import Agent
+# Decided upon Gr-aB
+from .program import Agent
