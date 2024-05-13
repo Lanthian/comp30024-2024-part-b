@@ -14,7 +14,7 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 from math import inf, log, sqrt
 from random import choice
 
-from agent.control import possible_moves, first_move
+from agent.control import first_move, possible_moves
 from agent.gamestate import Gamestate, flatten_board
 from agent.heuristics import *
 from agent.valwrap import ValWrap
@@ -50,14 +50,10 @@ class Agent:
         This method is called by the referee each time it is the agent's turn
         to take an action. Always returns an action object. 
         """
+        # Select first move based on first_move() function
         if self.first_move:
             self.first_move=False
-
-            match self.color:
-                case PlayerColor.RED:
-                    return first_move(self.game.board)
-                case PlayerColor.BLUE:
-                    return first_move(self.game.board)
+            return first_move(self.game.board)
         
         else:
             # Intelligently select next move
@@ -198,7 +194,6 @@ class MCTS():
         Returns:
           a terminal node value wrapped by termination condition:
           1 if win, -1 if loss, 0 if draw."""
-        # todo - abstract this code away from Gamestate
         # Check if terminal state reached (turn count or no remaining moves)
         if node.game.turn == MAX_TURNS:
             # Calculate winner by tile count here - bound between [-1,1]
@@ -247,11 +242,6 @@ class MCTS():
         # Value wrap with UCB1 value and list all children nodes
         l = [ValWrap(self.UCB1(child), child) 
              for child in state.all_children(self)]
-
-        # # todo - temp
-        # print([i.val for i in l])
-        # print([f"{self.N[x]}-{self.U[x]}" for x in state.all_children(self)])
-        # print("--")
 
         return max(l).item
                 

@@ -36,7 +36,7 @@ class Gamestate:
         """Apply an Action to a board and update state measures."""
         make_place(self.board, action, color)
 
-        # todo - not a good implementation atm, just temporary
+        # Not a great implementation, runs in O(k) time.
         self.counts[PlayerColor.RED] = 0
         self.counts[PlayerColor.BLUE] = 0
 

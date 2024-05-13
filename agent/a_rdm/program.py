@@ -38,14 +38,10 @@ class Agent:
         This method is called by the referee each time it is the agent's turn
         to take an action. Always returns an action object. 
         """
+        # Select first move based on first_move() function
         if self.first_move:
             self.first_move=False
-
-            match self.color:
-                case PlayerColor.RED:
-                    return first_move(self.game.board)
-                case PlayerColor.BLUE:
-                    return first_move(self.game.board)
+            return first_move(self.game.board)
         
         # Returns a random placement out of all possible moves
         else:

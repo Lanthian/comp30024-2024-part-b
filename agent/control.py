@@ -53,20 +53,6 @@ def first_move(board: dict):
     non_I_actions = [a for a in possible_actions if not is_I_shape(a)]
     return choice(non_I_actions)
 
-    """"
-    board_keys = set(board.keys())
-    print(board_keys)
-    possible_actions = []
-    for coord in board_keys:
-        actions = tetrominoes_plus(coord, set(board.keys()))  # Assume this returns a list of PlaceAction
-        possible_actions.extend(actions)  # Use extend to flatten the list into possible_actions
-
-    valid_actions = [action for action in possible_actions if sum(is_adjacent(coord, board_keys) for coord in action.coords) >= 1]
-    print(board_keys)
-    return random.choice(valid_actions) 
-    """
-
-
 
 def possible_moves(board: dict[Coord, PlayerColor], 
                    player: PlayerColor) -> list[PlaceAction]:

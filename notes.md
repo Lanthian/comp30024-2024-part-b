@@ -172,3 +172,9 @@ deleted.
   playstyle.
   * We will need to alter first_move to consider all possible starting states so we can train the MCTS across all 
     starting states. Will be a better implementation than it currently is however, for sure.
+
+
+# 2024.05.13
+* Final code combed through to prepare for submission. Checkout 'submission' branch for submitted product.
+* Match output from handler.py now stored in produced /out folder.
+* Simpler first_move usage code - removed redundant colour checking

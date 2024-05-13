@@ -35,9 +35,6 @@ class Agent:
     first_move: bool
     color: PlayerColor
     seen: dict[str: list[Action]]
-    # todo - perhaps implement a method to clear past seen to free space -
-    #        could be done in .update() method. Store seen items in prioritydict
-    #        based on turn?
 
     def __init__(self, color: PlayerColor, **referee: dict):
         """
@@ -54,14 +51,10 @@ class Agent:
         This method is called by the referee each time it is the agent's turn
         to take an action. Always returns an action object. 
         """
+        # Select first move based on first_move() function
         if self.first_move:
             self.first_move=False
-
-            match self.color:
-                case PlayerColor.RED:
-                    return first_move(self.game.board)
-                case PlayerColor.BLUE:
-                    return first_move(self.game.board)
+            return first_move(self.game.board)
         
         else:
             # Intelligently select next move if few remaning possible moves
@@ -83,6 +76,8 @@ class Agent:
         # There is only one action type, PlaceAction. 
         # Clear filled lines as necessary.
         self.game.move(action, color)
+
+        # Could implement a method to clear past seen to free space here...
 
 
 def greedy(game: Gamestate, player: PlayerColor, 

@@ -10,7 +10,7 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 # Project Part B: Game Playing Agent
 
 # === Imports ===
-from agent.control import possible_moves, first_move
+from agent.control import first_move, possible_moves
 from agent.gamestate import Gamestate
 from agent.heuristics import *
 from agent.valwrap import ValWrap
@@ -44,18 +44,14 @@ class Agent:
         This method is called by the referee each time it is the agent's turn
         to take an action. Always returns an action object. 
         """
+        # Select first move based on first_move() function
         if self.first_move:
             self.first_move=False
-
-            match self.color:
-                case PlayerColor.RED:
-                    return first_move(self.game.board)
-                case PlayerColor.BLUE:
-                    return first_move(self.game.board)
+            return first_move(self.game.board)
         
         else:
             # Intelligently select next move
-            return minimax(self.game,2,h1)     # todo - too inefficient to run
+            return minimax(self.game,2,h1)
 
     def update(self, color: PlayerColor, action: Action, **referee: dict):
         """

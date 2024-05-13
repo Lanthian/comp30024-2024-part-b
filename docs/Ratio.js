@@ -1,9 +1,20 @@
 /**
+ * Google Apps Script: 
+ *  Change file extension from .js to .gs for use with Google Sheets.
+ * 
+ * Functions to manipulate "x/y" ratios. Can sum numerous instances, or subtract
+ *  one from another.
+ * @author "Liam Anthian"
+ * 2024.05.12
+ */
+
+
+/**
  * Takes in a selection of binary "x/y" ratios and sums ratio parts. 
- * @param {number|Array<Array<number>>} input The value or range of cells with ratios to combine
+ * @param {number|Array<Array<number>>} input The value or range of cells with 
+ *  ratios to combine
  * @return "x1+x2+...+xn / y1+y2+...+yn"
  * @customfunction
- * @author Liam Anthian, 2024.05.12
  */
 function SUM_RATIO(input) {
   // Separating delimiter between ratio values
@@ -38,7 +49,6 @@ function SUM_RATIO(input) {
  * @param i2 The "x/y" ratio that is subtracted
  * @return "x1-x2/y1-y2"
  * @customfunction
- * @author Liam Anthian, 2024.05.12
  */
 function MINUS_RATIO(i1, i2) {
   r1 = String(i1).split('/')

@@ -112,7 +112,6 @@ def main():
     for a in agent_selection:
         print(a.__str__())
         fp.write(a.__str__() + "\n")
-    # print([a.__str__() for a in agent_selection])
 
     # Close output file
     fp.close()
@@ -120,7 +119,7 @@ def main():
 
 def simple_run(output: bool=True, count: int=1):
     """Basic function to manually play out a game without altering main()."""
-    agent_1 = "agent.a_mcts"
+    agent_1 = "agent.a_greedy"
     agent_2 = "agent.a_grab"
     command = ["python", "-m", "referee", agent_1, agent_2]
     # command = "python -m referee agent.a_rdm agent.a_greedy".split(" ")
@@ -150,7 +149,6 @@ def add_tuple(a: tuple, b: tuple):
     return tuple(map(add, a, b))
 
 
-main()
-# simple_run(True, 1)
-
-# py handler.py
+# -- Switch between the below depending on how you want to run the game --
+# main()
+simple_run(True, 1)
