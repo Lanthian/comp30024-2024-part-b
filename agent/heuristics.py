@@ -11,8 +11,8 @@ __credits__ = ["Liam Anthian", "Anthony Hill"]
 # === Imports ===
 from numbers import Number
 
-from agent.control import possible_moves
-from agent.gamestate import Gamestate
+from .control import possible_moves
+from .gamestate import Gamestate
 from referee.game import Coord, Direction, PlayerColor
 
 
